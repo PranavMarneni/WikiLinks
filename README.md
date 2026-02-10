@@ -29,3 +29,33 @@ This repository contains the **full-stack MERN setup** used by the team.
 WikiLinks/
 ├── client/     # React frontend
 └── server/     # Node/Express backend
+```
+
+---
+
+## Google OAuth Setup
+
+1. Go to the [Google Cloud Console](https://console.developers.google.com/).
+2. Create a new project (or select an existing one).
+3. Navigate to **APIs & Services > Credentials**.
+4. Click **Create Credentials > OAuth client ID**.
+5. Set the application type to **Web application**.
+6. Add the following to **Authorized redirect URIs**:
+   - `http://localhost:5000/auth/google/callback`
+7. Save and copy your **Client ID** and **Client Secret**.
+8. Create a `.env` file in the `server/` directory with:
+
+```
+GOOGLE_CLIENT_ID=your_client_id_here
+GOOGLE_CLIENT_SECRET=your_client_secret_here
+SESSION_SECRET=your_session_secret_here
+MONGODB=your_mongodb_username:your_mongodb_password
+```
+
+9. Start the backend server:
+
+```
+npm start
+```
+
+---
