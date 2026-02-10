@@ -1,6 +1,10 @@
-const { Server} = require('socket.io');
+const { Server } = require('socket.io');
+const RoomManager = require('../managers/RoomManager')
+const registerRoomHandlers = require('./roomHandlers')
+const registerGameHandlers = require('./gameHandlers')
 
 function initSocket(httpServer) {
+    const roomManager = new RoomManager();
     const io = new Server(httpServer, {
         cors: {
             origin: process.env.CLIENT_URL,
@@ -14,6 +18,9 @@ function initSocket(httpServer) {
         socket.on('disconnect', () => {
             console.log('Client disconnected:', socket.id);
         });
+
+        registerRoomHandlers(io, socket, roomManager);
+        registerGameHandlers(io, socket, roomManager);
     });
 }
 
