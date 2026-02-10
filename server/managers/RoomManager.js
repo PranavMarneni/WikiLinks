@@ -6,7 +6,6 @@ class RoomManager {
         this.lookupSocketID = new Map();
     }
 
-
     createRoom(playerName, socketID) {
         const roomCode = generateRoomCode();
 
@@ -16,7 +15,7 @@ class RoomManager {
             status: 'lobby',
             players: new Map(),
             startPage: null,
-            endPage: null,
+            targetPage: null,
             creationTime: Date.now()
         }
 
@@ -25,7 +24,7 @@ class RoomManager {
             isHost: true,
             clicks: 0,
             currPage: null,
-            finished: false,
+            isFinished: false,
             startTime: null,
             endTime: null
         }
@@ -38,14 +37,13 @@ class RoomManager {
         return room;
     }
 
-
     joinRoom(playerName, socketID, roomCode) {
         const player = {
             name: playerName,
             isHost: false,
             clicks: 0,
             currPage: null,
-            finished: false,
+            isFinished: false,
             startTime: null,
             endTime: null
         }
@@ -56,7 +54,7 @@ class RoomManager {
         return this.rooms.get(roomCode);
     }
 
-    leaveRoom(playerName, socketID) {
+    leaveRoom(socketID) {
         let room = this.getRoom(socketID);
 
         if (room.players.get(socketID).isHost) {
@@ -94,11 +92,11 @@ class RoomManager {
         return room;
     }
 
-    startGame(roomCode, startPage, endPage) {
+    startGame(roomCode, startPage, targetPage) {
         let currRoom = this.rooms.get(roomCode);
         currRoom.status = 'In Progress';
         currRoom.startPage = startPage;
-        currRoom.endPage = endPage;
+        currRoom.targetPage = targetPage;
 
         let currTime = Date.now();
         for (const [socketId, player] of currRoom.players) {
@@ -115,11 +113,11 @@ class RoomManager {
 
         player.currPage = newPage;
         player.clicks++;
-        if (player.currPage == room.endPage) {
-            player.finished = true;
+        if (player.currPage == room.targetPage) {
+            player.isFinished = true;
             player.endTime = Date.now();
         }
-        return room;
+        return { room, player };
     }
 }
 
