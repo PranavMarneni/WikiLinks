@@ -10,23 +10,26 @@ const [log, setLog] = useState([]);
 const [roomCode, setRoomCode] = useState('');
 
 useEffect(() => {
-    socket.on('welcome', (data) => {
+    const onWelcome = (data) => {
         setStatus('connected');
         setSocketId(data.id);
         setLog(prev => [...prev, `welcome: ${data.message}`]);
-    });
+    };
+    const onDisconnect = () => setStatus('disconnected');
+    const onPong = () => setLog(prev => [...prev, 'pong received']);
+    const onLeaderboardInvalidate = () => setLog(prev => [...prev, 'leaderboard:invalidate received']);
 
-    socket.on('disconnect', () => {
-        setStatus('disconnected');
-    });
+    socket.on('welcome', onWelcome);
+    socket.on('disconnect', onDisconnect);
+    socket.on('pong', onPong);
+    socket.on('leaderboard:invalidate', onLeaderboardInvalidate);
 
-    socket.on('pong', () => {
-        setLog(prev => [...prev, 'pong received']);
-    });
-
-    socket.on('leaderboard:invalidate', () => {
-      setLog(prev => [...prev, 'leaderboard:invalidate received']);
-  });
+    return () => {
+        socket.off('welcome', onWelcome);
+        socket.off('disconnect', onDisconnect);
+        socket.off('pong', onPong);
+        socket.off('leaderboard:invalidate', onLeaderboardInvalidate);
+    };
 }, []);
 
 return (

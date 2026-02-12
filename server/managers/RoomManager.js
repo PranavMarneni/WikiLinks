@@ -7,7 +7,10 @@ class RoomManager {
     }
 
     createRoom(playerName, socketID) {
-        const roomCode = generateRoomCode();
+        let roomCode = generateRoomCode();
+        while (this.rooms.has(roomCode)) {
+            roomCode = generateRoomCode();
+        }
 
         const room = {
             code: roomCode,
@@ -57,6 +60,9 @@ class RoomManager {
     leaveRoom(socketID) {
         let room = this.getRoom(socketID);
 
+        if (!room) return null;
+        if (!room.players.get(socketID)) return null;
+
         if (room.players.get(socketID).isHost) {
             if (room.players.size == 1) {
                 this.deleteRoom(room.code);
@@ -97,7 +103,7 @@ class RoomManager {
         currRoom.targetPage = targetPage;
 
         let currTime = Date.now();
-        for (const [socketId, player] of currRoom.players) {
+        for (const player of currRoom.players.values()) {
             player.startTime = currTime;
             player.currPage = startPage;
         }
