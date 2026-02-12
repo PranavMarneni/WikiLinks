@@ -18,6 +18,12 @@ function initSocket(httpServer) {
 
         socket.on('disconnect', () => {
             console.log('Client disconnected:', socket.id);
+            if (roomManager.lookupSocketID.has(socket.id)) {
+                const room = roomManager.leaveRoom(socket.id);
+                if (room) {
+                    io.to(room.code).emit('room:player-left', { room: roomManager.serializeRoom(room) });
+                }
+            }
         });
 
         registerRoomHandlers(io, socket, roomManager);
@@ -28,7 +34,8 @@ function initSocket(httpServer) {
         })
 
         socket.on('leaderboard:invalidate', (roomId) => {
-            io.to(roomId).emit('leaderboard:invalidate')
+            if (!socket.rooms.has(roomId)) return;
+            io.to(roomId).emit('leaderboard:invalidate');
         })
     });
 

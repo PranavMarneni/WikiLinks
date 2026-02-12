@@ -1,7 +1,7 @@
 import DebugPanel from './DebugPanel';
 
-  function App() {
-      return <DebugPanel />;
-  }
+function App() {
+    return <DebugPanel />;
+}
 
-  export default App;
+export default App;

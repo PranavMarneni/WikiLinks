@@ -1,5 +1,6 @@
-*md
-!README.md
+**/.DS_Store
 server/node_modules
+client/node_modules
 .env
 .idea/
+*md

@@ -63,10 +63,8 @@ class RoomManager {
                 return null;
             }
 
-            let newHostID;
-            let newHost;
-            newHostID = room.players.keys().next().value;
-            newHost = room.players.get(newHostID);
+            const newHostID = [...room.players.keys()].find(id => id !== socketID);
+            const newHost = room.players.get(newHostID);
             newHost.isHost = true;
             room.hostID = newHostID;
         }
@@ -105,6 +103,13 @@ class RoomManager {
         }
 
         return currRoom;
+    }
+
+    serializeRoom(room) {
+        return {
+            ...room,
+            players: Object.fromEntries(room.players)
+        };
     }
 
     recordClick(socketID, newPage) {
