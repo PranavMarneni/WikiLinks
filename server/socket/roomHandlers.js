@@ -6,7 +6,7 @@ function registerRoomHandlers(io, socket, RoomManager) {
     })
 
     socket.on('room:join', (data, callback) => {
-        const room = RoomManager.joinRoom(data.playerName, socket.id, data.code);
+        const room = RoomManager.joinRoom(data.playerName, socket.id, data.roomId);
         socket.join(room.code);
         io.to(room.code).emit('room:player-joined', { room });
         callback({success: true, code: room.code});
