@@ -1,7 +1,10 @@
-import React from "react";
 import { Timer, MousePointer } from "lucide-react";
+import WikiViewer from "../WikiViewer";
+import React, { useState } from "react";
 
 export default function WikiContainer() {
+  const [clicks, setClicks] = useState(0);
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 min-h-[500px] p-6 flex flex-col">
       {/* Stats bar */}
@@ -24,18 +27,28 @@ export default function WikiContainer() {
             <MousePointer className="w-4 h-4 text-gray-500" />
             <div>
               <div className="text-xs text-gray-500 uppercase tracking-wide">Clicks</div>
-              <div className="text-lg font-semibold tabular-nums">0</div>
+              <div className="text-lg font-semibold tabular-nums">{clicks}</div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Wikipedia viewer area */}
-      <div className="flex-1 bg-gray-50 rounded-lg border-2 border-gray-200 p-8 flex items-center justify-center">
-        <div className="text-center space-y-3">
-          <div className="text-4xl">📖</div>
-          <div className="text-gray-500 font-medium">Select a challenge to begin</div>
-          <div className="text-sm text-gray-400">Wikipedia content will appear here</div>
+      <div className="flex-1 bg-gray-50 rounded-lg border-2 border-gray-200 p-4 overflow-hidden">
+        <div className="h-full overflow-y-auto">
+          <WikiViewer
+            initialTitle="Georgia_Tech"
+            onStep={({ from, to }) => {
+              console.log("STEP:", from, " to ", to);
+              setClicks((prev) => prev + 1);
+            }}
+            onNavigate={(title) => {
+              console.log("NAVIGATE TO:", title);
+            }}
+            onLoaded={(title) => {
+              console.log("LOADED:", title);
+            }}
+          />
         </div>
       </div>
     </div>
