@@ -1,8 +1,10 @@
 {
   "name": "server",
+  "type": "module",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -11,5 +13,9 @@
   "description": "",
   "devDependencies": {
     "nodemon": "^3.1.11"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.4",
+    "mongodb": "^7.1.0"
   }
 }
