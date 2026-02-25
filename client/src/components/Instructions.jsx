@@ -6,7 +6,7 @@ export default function Instructions({ onClose }) {
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity"
+        className="fixed inset-0 bg-gray-500/40 z-40 transition-opacity"
         onClick={onClose}
       />
       
