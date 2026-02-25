@@ -115,7 +115,7 @@ export default function WikiViewer({
 
   return (
     <div className={className}>
-      <h3 style={{ marginBottom: 8 }}>
+      <h3 style={{ marginBottom: 8, textAlign: "center", fontFamily: "'EB Garamond', serif", fontSize: "1.75rem", fontWeight: "bold" }}>
         {currentTitle.replace(/_/g, " ")}
       </h3>
 
