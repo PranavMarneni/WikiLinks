@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import CompletionScreen from "./CompletionScreen";
 
 // Placeholder goal
-const GOAL_TITLE = "Temporary";
+const GOAL_TITLE = "Abraham_Lincoln";
 
 function formatTime(seconds) {
   const m = Math.floor(seconds / 60).toString().padStart(2, "0");
