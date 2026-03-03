@@ -17,7 +17,7 @@ export default function StandingsPanel() {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 min-h-[500px]">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col max-h-[500px]">
       <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
         <h3 className="text-lg font-semibold">Daily Leaderboard</h3>
         <span className="px-2 py-1 bg-green-50 text-green-700 text-xs font-medium rounded-full">
@@ -25,7 +25,7 @@ export default function StandingsPanel() {
         </span>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2 overflow-y-auto flex-1">
         {standings.length > 0 ? (
           standings.map((player) => (
             <div
