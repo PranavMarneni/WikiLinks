@@ -19,17 +19,22 @@ function initSocket(httpServer) {
 
         socket.on('disconnect', async () => {
             console.log('Client disconnected:', socket.id);
+            
             if (roomManager.lookupSocketID.has(socket.id)) {
                 const room = roomManager.leaveRoom(socket.id);
                 if (room) {
                     io.to(room.code).emit('room:player-left', { room: roomManager.serializeRoom(room) });
                 }
             }
-            
-            await GameSession.updateOne(
+
+            const game_session = await GameSession.findOne({ sessionId: socket.id })
+
+            if (game_session && !game_session.completed) {
+                await GameSession.updateOne(
                 { sessionId: socket.id},
-                { $set :{completed: true}}
-            )
+                { $set :{quit: true}}
+                )
+            }
         });
 
         registerRoomHandlers(io, socket, roomManager);
