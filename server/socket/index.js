@@ -2,6 +2,7 @@ const { Server } = require('socket.io');
 const RoomManager = require('../managers/RoomManager')
 const registerRoomHandlers = require('./roomHandlers')
 const registerGameHandlers = require('./gameHandlers')
+const GameSession = require('../models/GameSession')
 
 function initSocket(httpServer) {
     const roomManager = new RoomManager();
@@ -16,7 +17,7 @@ function initSocket(httpServer) {
         console.log('Client connected:', socket.id);
         socket.emit('welcome', {message: 'Connected', id:socket.id});
 
-        socket.on('disconnect', () => {
+        socket.on('disconnect', async () => {
             console.log('Client disconnected:', socket.id);
             if (roomManager.lookupSocketID.has(socket.id)) {
                 const room = roomManager.leaveRoom(socket.id);
@@ -24,6 +25,11 @@ function initSocket(httpServer) {
                     io.to(room.code).emit('room:player-left', { room: roomManager.serializeRoom(room) });
                 }
             }
+            
+            await GameSession.updateOne(
+                { sessionId: socket.id},
+                { $set :{completed: true}}
+            )
         });
 
         registerRoomHandlers(io, socket, roomManager);
