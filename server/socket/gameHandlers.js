@@ -18,15 +18,15 @@ function registerGameHandlers(io, socket, RoomManager) {
                     update: { $set: {
                         sessionId: socketID,
                         roomCode: room.code,
-                        start: room.start,
-                        target: room.target,
+                        start: room.startPage,
+                        target: room.targetPage,
                     }},
                     upsert: true
                 }
             })
         }
         await GameSession.bulkWrite(ops);
-        broadcastScoreboard(io, room.code);
+        await broadcastScoreboard(io, room.code);
         io.to(room.code).emit('game:started', { room: RoomManager.serializeRoom(room) });
         if (typeof callback === 'function') callback({success: true, code: room.code});
     })
@@ -39,23 +39,19 @@ function registerGameHandlers(io, socket, RoomManager) {
             { $inc: { clicks : 1} },
         )
 
-        broadcastScoreboard(io, room.code);
+        await broadcastScoreboard(io, room.code);
 
         io.to(room.code).emit('game:clicked', { room: RoomManager.serializeRoom(room) });
         if (player.isFinished) {
             io.to(room.code).emit('game:player-finished', { room: RoomManager.serializeRoom(room) });
-        }
-        if (typeof callback === 'function') callback({success: true, code: room.code});
-    })
 
-    socket.on('game:player-finished', async (data, callback) => {
-
-        await GameSession.updateOne(
+            await GameSession.updateOne(
             { sessionId: socket.id},
             { $set: {completed: true }}
         )
-
         broadcastScoreboard(io, data.code);
+        }
+        if (typeof callback === 'function') callback({success: true, code: room.code});
     })
 }
 
