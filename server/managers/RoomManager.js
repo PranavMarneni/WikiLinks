@@ -130,6 +130,15 @@ class RoomManager {
         }
         return { room, player };
     }
+
+    TEMP_setPlayerFinished(socketID) {
+        let room = this.getRoom(socketID)
+        let player = room.players.get(socketID)
+
+        player.isFinished = true;
+        player.endTime = Date.now();
+        return { room, player };
+    }
 }
 
 module.exports = RoomManager;
