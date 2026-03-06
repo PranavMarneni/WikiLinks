@@ -1,59 +1,71 @@
 const GameSession = require("../models/GameSession");
 
-async function broadcastScoreboard(io, roomCode) {
-    const sessions = await GameSession.find({ roomCode })
-        .sort({ clicks: 1})
+let globalGame = { startPage: null, targetPage: null };
+
+async function broadcastScoreboard(io) {
+    const connectedIds = [...io.sockets.sockets.keys()];
+    const sessions = await GameSession.find({ sessionId: { $in: connectedIds } })
+        .sort({ clicks: 1 })
         .select('sessionId clicks completed -_id');
-    io.to(roomCode).emit('leaderboard:update', sessions);
+    io.emit('leaderboard:update', sessions);
 }
 
-function registerGameHandlers(io, socket, RoomManager) {
-    socket.on('game:start', async(data, callback) => {
-        const room = RoomManager.startGame(data.code, data.startPage, data.targetPage);
-        const ops = []
-        for (const [socketID, player] of room.players) {
+function registerGameHandlers(io, socket) {
+    socket.on('game:start', async (data, callback) => {
+        globalGame.startPage = data.startPage;
+        globalGame.targetPage = data.targetPage;
+
+        const ops = [];
+        for (const [socketId] of io.sockets.sockets) {
             ops.push({
                 updateOne: {
-                    filter: { sessionId: socketID},
+                    filter: { sessionId: socketId },
                     update: { $set: {
-                        sessionId: socketID,
-                        roomCode: room.code,
-                        start: room.startPage,
-                        target: room.targetPage,
+                        sessionId: socketId,
+                        start: data.startPage,
+                        target: data.targetPage,
                     }},
                     upsert: true
                 }
-            })
+            });
         }
         await GameSession.bulkWrite(ops);
-        await broadcastScoreboard(io, room.code);
-        io.to(room.code).emit('game:started', { room: RoomManager.serializeRoom(room) });
-        if (typeof callback === 'function') callback({success: true, code: room.code});
-    })
+
+        io.emit('game:started', { startPage: data.startPage, targetPage: data.targetPage });
+        await broadcastScoreboard(io);
+
+        if (typeof callback === 'function') callback({ success: true });
+    });
 
     socket.on('game:click', async (data, callback) => {
-        const { room, player } = RoomManager.recordClick(socket.id, data.newPage);
-
         await GameSession.updateOne(
-            { sessionId: socket.id},
-            { $inc: { clicks : 1} },
-        )
+            { sessionId: socket.id },
+            { $inc: { clicks: 1 } }
+        );
 
-        await broadcastScoreboard(io, room.code);
-
-        io.to(room.code).emit('game:clicked', { room: RoomManager.serializeRoom(room) });
-        if (player.isFinished) {
-            io.to(room.code).emit('game:player-finished', { room: RoomManager.serializeRoom(room) });
-
+        if (data.newPage === globalGame.targetPage) {
             await GameSession.updateOne(
-            { sessionId: socket.id},
-            { $set: {completed: true }}
-        )
-        broadcastScoreboard(io, data.code);
+                { sessionId: socket.id },
+                { $set: { completed: true } }
+            );
         }
-        if (typeof callback === 'function') callback({success: true, code: room.code});
-    })
-}
 
+        await broadcastScoreboard(io);
+        io.emit('game:clicked');
+
+        if (typeof callback === 'function') callback({ success: true });
+    });
+
+    socket.on('game:player-finished', async (data, callback) => {
+        await GameSession.updateOne(
+            { sessionId: socket.id },
+            { $set: { completed: true } }
+        );
+
+        await broadcastScoreboard(io);
+
+        if (typeof callback === 'function') callback({ success: true });
+    });
+}
 
 module.exports = registerGameHandlers;
