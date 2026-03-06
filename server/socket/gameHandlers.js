@@ -44,14 +44,28 @@ function registerGameHandlers(io, socket, RoomManager) {
         io.to(room.code).emit('game:clicked', { room: RoomManager.serializeRoom(room) });
         if (player.isFinished) {
             io.to(room.code).emit('game:player-finished', { room: RoomManager.serializeRoom(room) });
-
+            
             await GameSession.updateOne(
             { sessionId: socket.id},
             { $set: {completed: true }}
-        )
+            )
         broadcastScoreboard(io, data.code);
         }
         if (typeof callback === 'function') callback({success: true, code: room.code});
+    })
+
+    socket.on('game:player-finished', async (data, callback) => {
+        const { room } = RoomManager.TEMP_setPlayerFinished(socket.id);
+
+        await GameSession.updateOne(
+            { sessionId: socket.id },
+            { $set: { completed: true } }
+        );
+
+        await broadcastScoreboard(io, room.code);
+        io.to(room.code).emit('game:player-finished', { room: RoomManager.serializeRoom(room) });
+
+        if (typeof callback === 'function') callback({ success: true });
     })
 }
 
