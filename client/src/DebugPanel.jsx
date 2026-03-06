@@ -5,9 +5,7 @@ function DebugPanel() {
 
 const [status, setStatus] = useState('disconnected');
 const [socketId, setSocketId] = useState('');
-const [roomInput, setRoomInput] = useState('');
 const [log, setLog] = useState([]);
-const [roomCode, setRoomCode] = useState('');
 const [leaderboard, setLeaderboard] = useState([]);
 
 useEffect(() => {
@@ -18,8 +16,6 @@ useEffect(() => {
     };
     const onDisconnect = () => setStatus('disconnected');
     const onPong = () => setLog(prev => [...prev, { type: 'info', text: 'pong received' }]);
-    const onLeaderboardInvalidate = () => setLog(prev => [...prev, { type: 'info', text: 'leaderboard:invalidate received' }]);
-    const onRoomJoined = (data) => setLog(prev => [...prev, { type: 'room', text: `room:joined — ${Object.keys(data.room.players).length} players` }]);
     const onLeaderboardUpdate = (data) => {
         setLeaderboard(data);
         setLog(prev => [...prev, { type: 'leaderboard', text: `leaderboard:update` }]);
@@ -31,8 +27,6 @@ useEffect(() => {
     socket.on('welcome', onWelcome);
     socket.on('disconnect', onDisconnect);
     socket.on('pong', onPong);
-    socket.on('leaderboard:invalidate', onLeaderboardInvalidate);
-    socket.on('room:joined', onRoomJoined);
     socket.on('leaderboard:update', onLeaderboardUpdate);
     socket.on('game:started', onGameStarted);
     socket.on('game:clicked', onGameClicked);
@@ -42,8 +36,6 @@ useEffect(() => {
         socket.off('welcome', onWelcome);
         socket.off('disconnect', onDisconnect);
         socket.off('pong', onPong);
-        socket.off('leaderboard:invalidate', onLeaderboardInvalidate);
-        socket.off('room:joined', onRoomJoined);
         socket.off('leaderboard:update', onLeaderboardUpdate);
         socket.off('game:started', onGameStarted);
         socket.off('game:clicked', onGameClicked);
@@ -51,7 +43,7 @@ useEffect(() => {
     };
 }, []);
 
-const logColor = { info: '#888', room: '#61dafb', game: '#4ec94e', leaderboard: '#f0a500' };
+const logColor = { info: '#888', game: '#4ec94e', leaderboard: '#f0a500' };
 
 const btnStyle = (bg) => ({ padding: '6px 12px', borderRadius: 4, background: bg, color: '#fff', border: 'none', cursor: 'pointer' });
 
@@ -67,17 +59,10 @@ return (
 
         {/* Controls */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            <input value={roomInput} onChange={e => setRoomInput(e.target.value)} placeholder="Room ID"
-                style={{ padding: '6px 10px', borderRadius: 4, border: '1px solid #444', background: '#2d2d2d', color: '#d4d4d4' }} />
-            <button onClick={() => socket.emit('room:join', { playerName: 'Player2', roomId: roomInput }, (res) => { setLog(prev => [...prev, { type: 'room', text: `room:join — ${JSON.stringify(res)}` }]); if (res.code) setRoomCode(res.code); })} style={btnStyle('#0e639c')}>Join Room</button>
-            <button onClick={() => socket.emit('room:create', { playerName: 'Player1' }, (res) => { setLog(prev => [...prev, { type: 'room', text: `room:create — ${JSON.stringify(res)}` }]); if (res.code) setRoomCode(res.code); })} style={btnStyle('#0e639c')}>Create Room</button>
             <button onClick={() => socket.emit('ping')} style={btnStyle('#444')}>Ping</button>
-            <span style={{ padding: '6px 0', fontSize: 12 }}>Room: <strong style={{ color: '#61dafb' }}>{roomCode || '—'}</strong></span>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => socket.emit('game:start', { code: roomCode, startPage: 'Cat', targetPage: 'Dog' }, (res) => setLog(prev => [...prev, { type: 'game', text: `game:start — ${JSON.stringify(res)}` }]))} style={btnStyle('#2d7a2d')}>Start Game</button>
+            <button onClick={() => socket.emit('game:start', { startPage: 'Cat', targetPage: 'Dog' }, (res) => setLog(prev => [...prev, { type: 'game', text: `game:start — ${JSON.stringify(res)}` }]))} style={btnStyle('#2d7a2d')}>Start Game</button>
             <button onClick={() => socket.emit('game:click', { newPage: 'Animal' }, (res) => setLog(prev => [...prev, { type: 'game', text: `game:click — ${JSON.stringify(res)}` }]))} style={btnStyle('#2d7a2d')}>Click</button>
-            <button onClick={() => socket.emit('game:player-finished', { code: roomCode })} style={btnStyle('#7a2d2d')}>Finish</button>
+            <button onClick={() => socket.emit('game:player-finished')} style={btnStyle('#7a2d2d')}>Finish</button>
         </div>
 
         {/* Lower split */}
