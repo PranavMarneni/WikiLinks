@@ -3,7 +3,8 @@ const GameSession = require("../models/GameSession");
 let globalGame = { startPage: null, targetPage: null };
 
 async function broadcastScoreboard(io) {
-    const sessions = await GameSession.find({ quit: { $ne: true } })
+    const connectedIds = [...io.sockets.sockets.keys()];
+    const sessions = await GameSession.find({ sessionId: { $in: connectedIds } })
         .sort({ clicks: 1 })
         .select('sessionId clicks completed -_id');
     io.emit('leaderboard:update', sessions);
