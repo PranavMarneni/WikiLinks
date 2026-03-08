@@ -1,7 +1,8 @@
-import express from 'express';
-import session from 'express-session';
-import passport from 'passport';
+import cors from 'cors';
 import dotenv from 'dotenv';
+import express from 'express';
+import passport from 'passport';
+import session from 'express-session';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { create_user, get_user } from './utils/database.js';
 
@@ -16,13 +17,18 @@ app.use(session({
   saveUninitialized: false,
 }));
 
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true,
+}));
+
 app.use(passport.initialize());
 app.use(passport.session());
 
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: '/auth/google/callback',
+    callbackURL: 'http://localhost:5000/auth/google/callback',
   },
   async (accessToken, refreshToken, profile, done) => {
     const { id, displayName, emails } = profile;

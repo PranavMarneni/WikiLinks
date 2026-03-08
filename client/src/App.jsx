@@ -1,27 +1,31 @@
-import React, { useState } from "react";
-import Header from "./components/Header";
-import Instructions from "./components/Instructions";
-import GameLayout from "./components/GameLayout";
-import ChallengeControls from "./components/ChallengeControls";
+import React, { useEffect, useState } from 'react';
 
-export default function App() {
-  const [showInstructions, setShowInstructions] = useState(true);
+function App() {
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/user', { credentials: 'include' })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => setUser(data));
+  }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
-      <Header onOpenInstructions={() => setShowInstructions(true)} />
-      
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        <GameLayout />
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <ChallengeControls />
+    <div>
+      <h1>WikiLinks</h1>
+      {user ? (
+        <div>
+          <p>Welcome, {user.name}!</p>
+          <a href="/logout">
+            <button>Logout</button>
+          </a>
         </div>
-      </main>
-
-      {/* Instructions Modal */}
-      {showInstructions && (
-        <Instructions onClose={() => setShowInstructions(false)} />
+      ) : (
+        <a href="http://localhost:5000/auth/google">
+          <button>Login with Google</button>
+        </a>
       )}
     </div>
   );
 }
+
+export default App;
