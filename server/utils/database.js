@@ -3,7 +3,7 @@ import { MongoClient, ServerApiVersion } from 'mongodb';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const uri = `mongodb+srv://${process.env.MONGODB}@main.f0erii0.mongodb.net/?appName=Main`;
+const uri = process.env.MONGODB.trim().replace(/^"|"$/g, "");
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
