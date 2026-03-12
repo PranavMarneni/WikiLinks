@@ -1,3 +1,4 @@
 server/.env
 /server/node_modules
 server/client_secret_252292996633-26gk3gtgu1qpqo225bvtldqpd8nct5dv.apps.googleusercontent.com.json
+client/.env
