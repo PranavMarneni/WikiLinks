@@ -4,10 +4,17 @@ import Header from "./components/Header";
 import Instructions from "./components/Instructions";
 import GameLayout from "./components/GameLayout";
 import ChallengeControls from "./components/ChallengeControls";
+import challenges from "./challenges";
 
 export default function App() {
   const [showInstructions, setShowInstructions] = useState(true);
   const [showScrollTop, setShowScrollTop] = useState(false);
+
+  const [gameStarted, setGameStarted] = useState(false);
+  const [gameComplete, setGameComplete] = useState(false);
+  const [selectedChallenge, setSelectedChallenge] = useState(0);
+  const [gameKey, setGameKey] = useState(0);
+  const [challengeStats, setChallengeStats] = useState(() => challenges.map(() => null));
 
   useEffect(() => {
     const onScroll = () => setShowScrollTop(window.scrollY > 300);
@@ -15,21 +22,61 @@ export default function App() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  function handleStart() {
+    setGameStarted(true);
+  }
+
+  function handleSelectChallenge(idx) {
+    setSelectedChallenge(idx);
+    setGameStarted(false);
+    setGameComplete(false);
+    setGameKey((k) => k + 1);
+  }
+
+  function handleGameComplete({ clicks, elapsedSeconds }) {
+    setGameComplete(true);
+    setChallengeStats((prev) => {
+      const next = [...prev];
+      next[selectedChallenge] = { clicks, elapsedSeconds };
+      return next;
+    });
+  }
+
+  function handleReset() {
+    setGameStarted(false);
+    setGameComplete(false);
+    setGameKey((k) => k + 1);
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <Header onOpenInstructions={() => setShowInstructions(true)} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        <ChallengeControls />
-        <GameLayout />
+        <ChallengeControls
+          challenges={challenges}
+          challengeStats={challengeStats}
+          selectedChallenge={selectedChallenge}
+          gameStarted={gameStarted}
+          gameComplete={gameComplete}
+          onSelectChallenge={handleSelectChallenge}
+          onStart={handleStart}
+        />
+        <GameLayout
+          challenge={challenges[selectedChallenge]}
+          challengeStats={challengeStats}
+          gameStarted={gameStarted}
+          gameComplete={gameComplete}
+          gameKey={gameKey}
+          onGameComplete={handleGameComplete}
+          onReset={handleReset}
+        />
       </main>
 
-      {/* Instructions Modal */}
       {showInstructions && (
         <Instructions onClose={() => setShowInstructions(false)} />
       )}
 
-      {/* Scroll to top button */}
       {showScrollTop && (
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}

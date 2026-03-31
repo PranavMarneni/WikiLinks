@@ -1,7 +1,13 @@
 import React from "react";
 import { Trophy, Medal } from "lucide-react";
 
-export default function StandingsPanel() {
+function formatTime(seconds) {
+  const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+  const s = (seconds % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
+}
+
+export default function StandingsPanel({ challengeStats }) {
   // Mock data for demonstration
   const standings = [
     { rank: 1, name: "player_one", clicks: 3, time: "0:45" },
@@ -68,13 +74,34 @@ export default function StandingsPanel() {
 
       {/* Your rank section */}
       <div className="mt-6 pt-6 border-t border-gray-200">
-        <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50 border border-blue-200">
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-semibold text-blue-900">—</span>
-            <span className="text-sm font-medium text-blue-900">You</span>
-          </div>
-          <span className="text-xs text-blue-700">Not started</span>
-        </div>
+        {(() => {
+          const completed = challengeStats.filter(Boolean);
+          const totalClicks = completed.reduce((sum, s) => sum + s.clicks, 0);
+          const totalSeconds = completed.reduce((sum, s) => sum + s.elapsedSeconds, 0);
+          const hasStats = completed.length > 0;
+          return (
+            <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50 border border-blue-200">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-semibold text-blue-900">—</span>
+                <span className="text-sm font-medium text-blue-900">You</span>
+              </div>
+              {hasStats ? (
+                <div className="flex items-center gap-4 text-xs text-blue-700">
+                  <div className="text-right">
+                    <div className="font-semibold text-blue-900">{totalClicks}</div>
+                    <div>clicks</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-mono font-semibold text-blue-900">{formatTime(totalSeconds)}</div>
+                    <div>time</div>
+                  </div>
+                </div>
+              ) : (
+                <span className="text-xs text-blue-700">Not started</span>
+              )}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
