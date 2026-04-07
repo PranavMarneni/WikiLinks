@@ -2,11 +2,23 @@ const GameSession = require("../models/GameSession");
 
 let globalGame = { startPage: null, targetPage: null };
 
+function connectedUserIds(io) {
+    const ids = new Set();
+    for (const [, s] of io.sockets.sockets) {
+        if (s.userId) ids.add(s.userId);
+    }
+    return [...ids];
+}
+
 async function broadcastScoreboard(io) {
-    const connectedIds = [...io.sockets.sockets.keys()];
-    const sessions = await GameSession.find({ sessionId: { $in: connectedIds } })
+    const userIds = connectedUserIds(io);
+    const sessions = await GameSession.find({
+        userId: { $in: userIds },
+        start: globalGame.startPage,
+        target: globalGame.targetPage,
+    })
         .sort({ clicks: 1 })
-        .select('sessionId clicks completed -_id');
+        .select('userId displayName clicks completed -_id');
     io.emit('leaderboard:update', sessions);
 }
 
@@ -16,20 +28,28 @@ function registerGameHandlers(io, socket) {
         globalGame.targetPage = data.targetPage;
 
         const ops = [];
-        for (const [socketId] of io.sockets.sockets) {
+        for (const [, s] of io.sockets.sockets) {
+            if (!s.userId) continue;
             ops.push({
                 updateOne: {
-                    filter: { sessionId: socketId },
-                    update: { $set: {
-                        sessionId: socketId,
-                        start: data.startPage,
-                        target: data.targetPage,
-                    }},
-                    upsert: true
-                }
+                    filter: { userId: s.userId, start: data.startPage, target: data.targetPage },
+                    update: {
+                        $set: {
+                            userId: s.userId,
+                            displayName: s.displayName || '',
+                            sessionId: s.id,
+                            start: data.startPage,
+                            target: data.targetPage,
+                            clicks: 0,
+                            quit: false,
+                            completed: false,
+                        },
+                    },
+                    upsert: true,
+                },
             });
         }
-        await GameSession.bulkWrite(ops);
+        if (ops.length) await GameSession.bulkWrite(ops);
 
         io.emit('game:started', { startPage: data.startPage, targetPage: data.targetPage });
         await broadcastScoreboard(io);
@@ -39,13 +59,13 @@ function registerGameHandlers(io, socket) {
 
     socket.on('game:click', async (data, callback) => {
         await GameSession.updateOne(
-            { sessionId: socket.id },
+            { userId: socket.userId, start: globalGame.startPage, target: globalGame.targetPage },
             { $inc: { clicks: 1 } }
         );
 
         if (data.newPage === globalGame.targetPage) {
             await GameSession.updateOne(
-                { sessionId: socket.id },
+                { userId: socket.userId, start: globalGame.startPage, target: globalGame.targetPage },
                 { $set: { completed: true } }
             );
         }
@@ -58,7 +78,7 @@ function registerGameHandlers(io, socket) {
 
     socket.on('game:player-finished', async (data, callback) => {
         await GameSession.updateOne(
-            { sessionId: socket.id },
+            { userId: socket.userId, start: globalGame.startPage, target: globalGame.targetPage },
             { $set: { completed: true } }
         );
 
