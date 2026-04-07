@@ -2,90 +2,189 @@ const GameSession = require("../models/GameSession");
 
 let globalGame = { startPage: null, targetPage: null };
 
-function connectedUserIds(io) {
-    const ids = new Set();
-    for (const [, s] of io.sockets.sockets) {
-        if (s.userId) ids.add(s.userId);
-    }
-    return [...ids];
+function setGlobalGame(startPage, targetPage) {
+    globalGame = { startPage, targetPage };
 }
 
-async function broadcastScoreboard(io) {
-    const userIds = connectedUserIds(io);
-    const sessions = await GameSession.find({
+function resetGlobalGame() {
+    globalGame = { startPage: null, targetPage: null };
+}
+
+function getGlobalGame() {
+    return { ...globalGame };
+}
+
+function hasActiveGame() {
+    return Boolean(globalGame.startPage && globalGame.targetPage);
+}
+
+function gameFilterForUser(userId) {
+    return {
+        userId,
+        start: globalGame.startPage,
+        target: globalGame.targetPage,
+    };
+}
+
+function connectedPlayers(io) {
+    const players = new Map();
+    for (const [, socket] of io.sockets.sockets) {
+        if (!socket.userId) continue;
+        players.set(socket.userId, {
+            userId: socket.userId,
+            displayName: socket.displayName || "",
+            sessionId: socket.id,
+        });
+    }
+    return [...players.values()];
+}
+
+async function ensurePlayerSession(model, player, extraUpdate = {}) {
+    if (!hasActiveGame()) {
+        return;
+    }
+
+    await model.updateOne(
+        gameFilterForUser(player.userId),
+        {
+            $set: {
+                userId: player.userId,
+                displayName: player.displayName || "",
+                sessionId: player.sessionId,
+                start: globalGame.startPage,
+                target: globalGame.targetPage,
+                ...extraUpdate,
+            },
+            $setOnInsert: {
+                clicks: 0,
+                quit: false,
+                completed: false,
+            },
+        },
+        { upsert: true }
+    );
+}
+
+async function broadcastScoreboard(io, model = GameSession) {
+    const userIds = connectedPlayers(io).map((player) => player.userId);
+    const sessions = await model.find({
         userId: { $in: userIds },
         start: globalGame.startPage,
         target: globalGame.targetPage,
     })
         .sort({ clicks: 1 })
-        .select('userId displayName clicks completed -_id');
-    io.emit('leaderboard:update', sessions);
+        .select("userId displayName clicks completed -_id");
+    io.emit("leaderboard:update", sessions);
 }
 
-function registerGameHandlers(io, socket) {
-    socket.on('game:start', async (data, callback) => {
-        globalGame.startPage = data.startPage;
-        globalGame.targetPage = data.targetPage;
+async function handleGameStart(io, data, callback, model = GameSession) {
+    setGlobalGame(data.startPage, data.targetPage);
 
-        const ops = [];
-        for (const [, s] of io.sockets.sockets) {
-            if (!s.userId) continue;
-            ops.push({
-                updateOne: {
-                    filter: { userId: s.userId, start: data.startPage, target: data.targetPage },
-                    update: {
-                        $set: {
-                            userId: s.userId,
-                            displayName: s.displayName || '',
-                            sessionId: s.id,
-                            start: data.startPage,
-                            target: data.targetPage,
-                            clicks: 0,
-                            quit: false,
-                            completed: false,
-                        },
-                    },
-                    upsert: true,
+    const players = connectedPlayers(io);
+    const ops = players.map((player) => ({
+        updateOne: {
+            filter: gameFilterForUser(player.userId),
+            update: {
+                $set: {
+                    userId: player.userId,
+                    displayName: player.displayName || "",
+                    sessionId: player.sessionId,
+                    start: data.startPage,
+                    target: data.targetPage,
+                    clicks: 0,
+                    quit: false,
+                    completed: false,
                 },
-            });
+            },
+            upsert: true,
+        },
+    }));
+
+    if (ops.length) {
+        await model.bulkWrite(ops);
+    }
+
+    io.emit("game:started", { startPage: data.startPage, targetPage: data.targetPage });
+    await broadcastScoreboard(io, model);
+
+    if (typeof callback === "function") {
+        callback({ success: true });
+    }
+}
+
+async function handleGameClick(io, socket, data, callback, model = GameSession) {
+    if (!hasActiveGame()) {
+        if (typeof callback === "function") {
+            callback({ success: false, error: "No active game" });
         }
-        if (ops.length) await GameSession.bulkWrite(ops);
+        return;
+    }
 
-        io.emit('game:started', { startPage: data.startPage, targetPage: data.targetPage });
-        await broadcastScoreboard(io);
-
-        if (typeof callback === 'function') callback({ success: true });
+    await ensurePlayerSession(model, {
+        userId: socket.userId,
+        displayName: socket.displayName,
+        sessionId: socket.id,
     });
 
-    socket.on('game:click', async (data, callback) => {
-        await GameSession.updateOne(
-            { userId: socket.userId, start: globalGame.startPage, target: globalGame.targetPage },
-            { $inc: { clicks: 1 } }
-        );
-
-        if (data.newPage === globalGame.targetPage) {
-            await GameSession.updateOne(
-                { userId: socket.userId, start: globalGame.startPage, target: globalGame.targetPage },
-                { $set: { completed: true } }
-            );
+    await model.updateOne(
+        gameFilterForUser(socket.userId),
+        {
+            $set: { sessionId: socket.id, displayName: socket.displayName || "" },
+            $inc: { clicks: 1 },
         }
+    );
 
-        await broadcastScoreboard(io);
-        io.emit('game:clicked');
-
-        if (typeof callback === 'function') callback({ success: true });
-    });
-
-    socket.on('game:player-finished', async (data, callback) => {
-        await GameSession.updateOne(
-            { userId: socket.userId, start: globalGame.startPage, target: globalGame.targetPage },
+    if (data.newPage === globalGame.targetPage) {
+        await model.updateOne(
+            gameFilterForUser(socket.userId),
             { $set: { completed: true } }
         );
+    }
 
-        await broadcastScoreboard(io);
+    await broadcastScoreboard(io, model);
+    io.emit("game:clicked");
 
-        if (typeof callback === 'function') callback({ success: true });
+    if (typeof callback === "function") {
+        callback({ success: true });
+    }
+}
+
+async function handlePlayerFinished(io, socket, callback, model = GameSession) {
+    if (!hasActiveGame()) {
+        if (typeof callback === "function") {
+            callback({ success: false, error: "No active game" });
+        }
+        return;
+    }
+
+    await ensurePlayerSession(model, {
+        userId: socket.userId,
+        displayName: socket.displayName,
+        sessionId: socket.id,
     });
+
+    await model.updateOne(
+        gameFilterForUser(socket.userId),
+        {
+            $set: {
+                sessionId: socket.id,
+                displayName: socket.displayName || "",
+                completed: true,
+            },
+        }
+    );
+
+    await broadcastScoreboard(io, model);
+
+    if (typeof callback === "function") {
+        callback({ success: true });
+    }
+}
+
+function registerGameHandlers(io, socket, model = GameSession) {
+    socket.on("game:start", (data, callback) => handleGameStart(io, data, callback, model));
+    socket.on("game:click", (data, callback) => handleGameClick(io, socket, data, callback, model));
+    socket.on("game:player-finished", (_data, callback) => handlePlayerFinished(io, socket, callback, model));
 }
 
 module.exports = registerGameHandlers;

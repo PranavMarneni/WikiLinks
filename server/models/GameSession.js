@@ -11,6 +11,16 @@ const gameSessionSchema = new mongoose.Schema({
     completed: { type: Boolean, default: false },
 }, { timestamps: true });
 
-gameSessionSchema.index({ userId: 1, start: 1, target: 1 }, { unique: true });
+gameSessionSchema.index(
+    { userId: 1, start: 1, target: 1 },
+    {
+        unique: true,
+        partialFilterExpression: {
+            userId: { $type: 'string' },
+            start: { $type: 'string' },
+            target: { $type: 'string' },
+        },
+    }
+);
 
 module.exports = mongoose.model('GameSession', gameSessionSchema);
