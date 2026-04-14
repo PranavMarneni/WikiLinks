@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import DOMPurify from "dompurify";
 import "./WikiViewer.css";
 
@@ -15,8 +15,6 @@ export default function WikiViewer({
   const [html, setHtml] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const onLoadedRef = useRef(onLoaded);
-  useEffect(() => { onLoadedRef.current = onLoaded; }, [onLoaded]);
 
   function isInternalWikiLink(href) {
     if (!href) return false;
@@ -47,10 +45,10 @@ export default function WikiViewer({
     const anchor = e.target.closest("a");
     if (!anchor) return;
 
-    e.preventDefault();
-
     const href = anchor.getAttribute("href");
     if (!isInternalWikiLink(href)) return;
+
+    e.preventDefault();
 
     const nextTitle = titleFromHref(href);
     if (!nextTitle) return;
@@ -82,7 +80,7 @@ export default function WikiViewer({
 
         if (!cancelled) {
           setHtml(cleanHtml);
-          onLoadedRef.current?.(currentTitle);
+          onLoaded?.(currentTitle);
         }
       } catch (err) {
         console.error(err);
@@ -96,7 +94,7 @@ export default function WikiViewer({
     return () => {
       cancelled = true;
     };
-}, [currentTitle]);
+}, [currentTitle, onLoaded]);
 
   if (loading) {
     return (
@@ -117,7 +115,7 @@ export default function WikiViewer({
 
   return (
     <div className={className}>
-      <h3 style={{ marginBottom: 8, textAlign: "center", fontFamily: "'EB Garamond', serif", fontSize: "1.75rem", fontWeight: "bold" }}>
+      <h3 style={{ marginBottom: 8 }}>
         {currentTitle.replace(/_/g, " ")}
       </h3>
 
