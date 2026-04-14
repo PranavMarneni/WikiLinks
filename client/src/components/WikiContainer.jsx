@@ -26,7 +26,7 @@ export default function WikiContainer({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // ---------------- FETCH 3 CHALLENGES ----------------
+  //FETCH new challenges
   useEffect(() => {
     const fetchDailyChallenges = async () => {
       try {
@@ -35,7 +35,6 @@ export default function WikiContainer({
 
         const data = await response.json();
 
-        // ONLY TAKE 3 PAIRS
         setChallenges(data.challenges.slice(0, 3));
       } catch (err) {
         console.error(err);
@@ -48,13 +47,11 @@ export default function WikiContainer({
     fetchDailyChallenges();
   }, []);
 
-  // ---------------- KEEP YOUR RESET LOGIC ----------------
   useEffect(() => {
     setClicks(0);
     setElapsedSeconds(0);
   }, [gameKey]);
 
-  // ---------------- TIMER (UNCHANGED) ----------------
   useEffect(() => {
     if (!gameStarted || gameComplete) return;
 
@@ -65,7 +62,6 @@ export default function WikiContainer({
     return () => clearInterval(id);
   }, [gameStarted, gameComplete, gameKey]);
 
-  // ---------------- START FROM UI SELECTION ----------------
   const startChallenge = (c) => {
     setSelectedChallenge(c);
     setClicks(0);
@@ -76,7 +72,6 @@ export default function WikiContainer({
     setSelectedChallenge(null);
   };
 
-  // ---------------- GAME EVENTS (UNCHANGED LOGIC) ----------------
   const handleStep = useCallback(({ from, to }) => {
     console.log("STEP:", from, "to", to);
     setClicks((prev) => prev + 1);
@@ -99,7 +94,6 @@ export default function WikiContainer({
     [onGameComplete, selectedChallenge, challenge, clicks, elapsedSeconds]
   );
 
-  // ---------------- LOADING ----------------
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center text-gray-500">
@@ -109,7 +103,6 @@ export default function WikiContainer({
     );
   }
 
-  // ---------------- ERROR ----------------
   if (error) {
     return (
       <div className="flex-1 flex items-center justify-center text-red-500">
@@ -118,14 +111,15 @@ export default function WikiContainer({
     );
   }
 
-  // ---------------- CHALLENGE SELECT SCREEN (ADDED ONLY) ----------------
   if (!gameStarted && !selectedChallenge && !challenge) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center">
-        <button
-          onClick={quitSelection}
-          className="absolute top-4 left-4 p-2 hover:bg-gray-100 rounded-md"
-        ></button>
+         <button
+            onClick={quitSelection}
+            className="absolute top-4 left-4 p-2 hover:bg-gray-100 rounded-md"
+          >
+            <ArrowLeft className="w-5 h-5 text-gray-600" />
+          </button>
         <div className="flex items-center gap-2 mb-6">
           <Play className="w-6 h-6 text-green-600" />
           <h2 className="text-xl font-bold text-gray-800">
@@ -159,7 +153,6 @@ export default function WikiContainer({
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 min-h-[500px] p-6 flex flex-col">
 
-      {/* ---------------- YOUR ORIGINAL STATS BAR (UNCHANGED) ---------------- */}
       <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
         <div className="flex items-center gap-2">
           <div
@@ -201,7 +194,6 @@ export default function WikiContainer({
         </div>
       </div>
 
-      {/* ---------------- VIEWER AREA (UNCHANGED STRUCTURE) ---------------- */}
       <div className="flex-1 bg-gray-50 rounded-lg border-2 border-gray-200 p-4 overflow-hidden">
         <div className="h-full overflow-y-auto">
           {!gameStarted && !gameComplete ? (
