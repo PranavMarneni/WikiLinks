@@ -175,6 +175,7 @@ async function handlePlayerFinished(io, socket, callback, model = GameSession) {
     );
 
     await broadcastScoreboard(io, model);
+    io.emit("game:player-finished", { userId: socket.userId });
 
     if (typeof callback === "function") {
         callback({ success: true });
