@@ -3,31 +3,39 @@ import Header from "./components/Header";
 import { loginWithGoogle } from "./js/auth";
 
 function DebugPanel({ socket, user, loading }) {
-
-const [status, setStatus] = useState('disconnected');
-const [socketId, setSocketId] = useState('');
-const [userId, setUserId] = useState('');
+const [connectionInfo, setConnectionInfo] = useState({
+    status: 'disconnected',
+    socketId: '',
+    userId: '',
+});
 const [log, setLog] = useState([]);
 const [leaderboard, setLeaderboard] = useState([]);
 
 useEffect(() => {
     if (!socket) {
-        setStatus('disconnected');
-        setSocketId('');
-        setUserId('');
         return;
     }
 
     const onWelcome = (data) => {
-        setStatus('connected');
-        setSocketId(data.id);
-        setUserId(data.userId || '');
+        setConnectionInfo({
+            status: 'connected',
+            socketId: data.id,
+            userId: data.userId || '',
+        });
         setLog(prev => [...prev, { type: 'info', text: `welcome: ${data.message} (user: ${data.userId})` }]);
     };
     const onConnectError = (err) => {
+        setConnectionInfo(prev => ({ ...prev, status: 'disconnected' }));
         setLog(prev => [...prev, { type: 'info', text: `connect_error: ${err.message}` }]);
     };
-    const onDisconnect = () => setStatus('disconnected');
+    const onDisconnect = () => {
+        setConnectionInfo(prev => ({
+            ...prev,
+            status: 'disconnected',
+            socketId: '',
+            userId: '',
+        }));
+    };
     const onPong = () => setLog(prev => [...prev, { type: 'info', text: 'pong received' }]);
     const onLeaderboardUpdate = (data) => {
         setLeaderboard(data);
@@ -57,6 +65,10 @@ useEffect(() => {
         socket.off('game:player-finished', onPlayerFinished);
     };
 }, [socket]);
+
+const status = socket ? connectionInfo.status : 'disconnected';
+const socketId = socket ? connectionInfo.socketId : '';
+const userId = socket ? connectionInfo.userId : '';
 
 const logColor = { info: '#888', game: '#4ec94e', leaderboard: '#f0a500' };
 

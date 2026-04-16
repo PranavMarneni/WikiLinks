@@ -1,41 +1,241 @@
-import React from "react";
-import { Timer, MousePointer } from "lucide-react";
+import { Timer, MousePointer, Play, ArrowLeft, Loader2 } from "lucide-react";
+import WikiViewer from "../WikiViewer";
+import React, { useState, useEffect, useCallback } from "react";
+import CompletionScreen from "./CompletionScreen";
 
-export default function WikiContainer() {
+function formatTime(seconds) {
+  const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+  const s = (seconds % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
+}
+
+export default function WikiContainer({
+  challenge,
+  gameStarted,
+  gameComplete,
+  gameKey,
+  socket,
+  socketConnected,
+  onGameComplete,
+  onReset
+}) {
+  const [challenges, setChallenges] = useState([]);
+  const [selectedChallenge, setSelectedChallenge] = useState(null);
+
+  const [clicks, setClicks] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  //FETCH new challenges
+  useEffect(() => {
+    const fetchDailyChallenges = async () => {
+      try {
+        const response = await fetch("http://localhost:3001/api/challenges");
+        if (!response.ok) throw new Error("Failed to fetch challenges");
+
+        const data = await response.json();
+
+        setChallenges(data.challenges.slice(0, 3));
+      } catch (err) {
+        console.error(err);
+        setError("Could not load today's challenges. Run backend");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDailyChallenges();
+  }, []);
+
+  useEffect(() => {
+    setClicks(0);
+    setElapsedSeconds(0);
+  }, [gameKey]);
+
+  useEffect(() => {
+    if (!gameStarted || gameComplete) return;
+
+    const id = setInterval(() => {
+      setElapsedSeconds((s) => s + 1);
+    }, 1000);
+
+    return () => clearInterval(id);
+  }, [gameStarted, gameComplete, gameKey]);
+
+  const startChallenge = (c) => {
+    setSelectedChallenge(c);
+    setClicks(0);
+    setElapsedSeconds(0);
+  };
+
+  const quitSelection = () => {
+    setSelectedChallenge(null);
+  };
+
+  const handleStep = useCallback(({ from, to }) => {
+    console.log("STEP:", from, "to", to);
+    setClicks((prev) => prev + 1);
+
+    if (socketConnected && socket) {
+      socket.emit("game:click", { newPage: to });
+    }
+  }, [socket, socketConnected]);
+
+  const handleNavigate = useCallback((title) => {
+    console.log("NAVIGATE:", title);
+  }, []);
+
+  const handleLoaded = useCallback(
+    (title) => {
+      console.log("LOADED:", title);
+
+      const active = selectedChallenge || challenge;
+
+      if (active && title === active.goal) {
+        if (socketConnected && socket) {
+          socket.emit("game:player-finished");
+        }
+
+        onGameComplete({ clicks, elapsedSeconds });
+      }
+    },
+    [onGameComplete, selectedChallenge, challenge, clicks, elapsedSeconds, socket, socketConnected]
+  );
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center text-gray-500">
+        <Loader2 className="w-8 h-8 animate-spin mr-2" />
+        Loading challenges...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex-1 flex items-center justify-center text-red-500">
+        {error}
+      </div>
+    );
+  }
+
+  if (!gameStarted && !selectedChallenge && !challenge) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center">
+         <button
+            onClick={quitSelection}
+            className="absolute top-4 left-4 p-2 hover:bg-gray-100 rounded-md"
+          >
+            <ArrowLeft className="w-5 h-5 text-gray-600" />
+          </button>
+        <div className="flex items-center gap-2 mb-6">
+          <Play className="w-6 h-6 text-green-600" />
+          <h2 className="text-xl font-bold text-gray-800">
+            Choose a Daily Challenge
+          </h2>
+        </div>
+
+        <div className="grid gap-4 w-full max-w-md">
+          {challenges.map((c, i) => (
+            <button
+              key={i}
+              onClick={() => startChallenge(c)}
+              className="p-4 border-2 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition"
+            >
+              <span className="font-semibold text-gray-900">
+                {c.start.replace(/_/g, " ")}
+              </span>
+              <span className="mx-2 text-gray-400">→</span>
+              <span className="font-semibold text-gray-900">
+                {c.end.replace(/_/g, " ")}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const activeChallenge = selectedChallenge || challenge;
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 min-h-[500px] p-6 flex flex-col">
-      {/* Stats bar */}
+
       <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-sm font-medium text-gray-600">Live Challenge</span>
+          <div
+            className={`w-2 h-2 rounded-full ${
+              gameStarted && !gameComplete
+                ? "bg-green-500 animate-pulse"
+                : "bg-gray-300"
+            }`}
+          />
+          <span className="text-sm font-medium text-gray-600">
+            {gameStarted && !gameComplete
+              ? "Live Challenge"
+              : gameComplete
+              ? "Challenge Over"
+              : "Waiting to Start"}
+          </span>
         </div>
-        
+
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
             <Timer className="w-4 h-4 text-gray-500" />
             <div>
-              <div className="text-xs text-gray-500 uppercase tracking-wide">Time</div>
-              <div className="text-lg font-semibold tabular-nums">00:00</div>
+              <div className="text-xs text-gray-500 uppercase">Time</div>
+              <div className="text-lg font-semibold tabular-nums">
+                {formatTime(elapsedSeconds)}
+              </div>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <MousePointer className="w-4 h-4 text-gray-500" />
             <div>
-              <div className="text-xs text-gray-500 uppercase tracking-wide">Clicks</div>
-              <div className="text-lg font-semibold tabular-nums">0</div>
+              <div className="text-xs text-gray-500 uppercase">Clicks</div>
+              <div className="text-lg font-semibold tabular-nums">
+                {clicks}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Wikipedia viewer area */}
-      <div className="flex-1 bg-gray-50 rounded-lg border-2 border-gray-200 p-8 flex items-center justify-center">
-        <div className="text-center space-y-3">
-          <div className="text-4xl">📖</div>
-          <div className="text-gray-500 font-medium">Select a challenge to begin</div>
-          <div className="text-sm text-gray-400">Wikipedia content will appear here</div>
+      <div className="flex-1 bg-gray-50 rounded-lg border-2 border-gray-200 p-4 overflow-hidden">
+        <div className="h-full overflow-y-auto">
+          {!gameStarted && !gameComplete ? (
+            <div className="flex flex-col items-center justify-center h-full min-h-[300px] gap-4 text-center">
+              <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+                <Play className="w-8 h-8 text-green-600" />
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-gray-700">
+                  Ready to Play?
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Press <span className="font-medium text-green-600">Start</span>{" "}
+                  to begin the challenge
+                </p>
+              </div>
+            </div>
+          ) : gameComplete ? (
+            <CompletionScreen
+              clicks={clicks}
+              time={formatTime(elapsedSeconds)}
+              onPlayAgain={onReset}
+            />
+          ) : activeChallenge ? (
+            <WikiViewer
+              key={gameKey}
+              initialTitle={activeChallenge.start}
+              onStep={handleStep}
+              onNavigate={handleNavigate}
+              onLoaded={handleLoaded}
+            />
+          ) : null}
         </div>
       </div>
     </div>

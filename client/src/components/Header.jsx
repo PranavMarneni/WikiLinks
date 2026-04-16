@@ -3,7 +3,7 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "../js/firebase";
 import { loginWithGoogle, logout } from "../js/auth";
 
-export default function Header({ onOpenInstructions }) {
+export default function Header({ onOpenInstructions = () => {} }) {
   const [user, loading] = useAuthState(auth);
 
   return (
