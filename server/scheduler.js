@@ -20,7 +20,7 @@ async function run() {
   }
 }
 
-cron.schedule("0 0 * * *", () => {
+cron.schedule("00 00 * * *", () => {
   console.log("12:00 AM trigger.");
   run();
 });
