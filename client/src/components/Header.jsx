@@ -1,7 +1,11 @@
-import React from "react";
 import { HelpCircle } from "lucide-react";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { auth } from "../js/firebase";
+import { loginWithGoogle, logout } from "../js/auth";
 
-export default function Header({ onOpenInstructions }) {
+export default function Header({ onOpenInstructions = () => {} }) {
+  const [user, loading] = useAuthState(auth);
+
   return (
     <header className="bg-white border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -26,11 +30,27 @@ export default function Header({ onOpenInstructions }) {
           </div>
 
           <div className="flex items-center space-x-2">
-            <button
-              className="px-4 py-1.5 rounded-full bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors"
-            >
-              Login
-            </button>
+            {loading ? null : user ? (
+              <>
+                <span className="text-gray-700 text-sm font-medium">{user.displayName}</span>
+                {user.photoURL && (
+                  <img src={user.photoURL} alt="" className="w-8 h-8 rounded-full object-cover" />
+                )}
+                <button
+                  onClick={logout}
+                  className="px-4 py-1.5 rounded-full bg-gray-200 text-gray-800 text-sm font-medium hover:bg-gray-300 transition-colors"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={loginWithGoogle}
+                className="px-4 py-1.5 rounded-full bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors"
+              >
+                Login
+              </button>
+            )}
           </div>
         </div>
       </div>
