@@ -14,6 +14,8 @@ export default function WikiContainer({
   gameStarted,
   gameComplete,
   gameKey,
+  socket,
+  socketConnected,
   onGameComplete,
   onReset
 }) {
@@ -75,7 +77,11 @@ export default function WikiContainer({
   const handleStep = useCallback(({ from, to }) => {
     console.log("STEP:", from, "to", to);
     setClicks((prev) => prev + 1);
-  }, []);
+
+    if (socketConnected && socket) {
+      socket.emit("game:click", { newPage: to });
+    }
+  }, [socket, socketConnected]);
 
   const handleNavigate = useCallback((title) => {
     console.log("NAVIGATE:", title);
@@ -88,10 +94,14 @@ export default function WikiContainer({
       const active = selectedChallenge || challenge;
 
       if (active && title === active.goal) {
+        if (socketConnected && socket) {
+          socket.emit("game:player-finished");
+        }
+
         onGameComplete({ clicks, elapsedSeconds });
       }
     },
-    [onGameComplete, selectedChallenge, challenge, clicks, elapsedSeconds]
+    [onGameComplete, selectedChallenge, challenge, clicks, elapsedSeconds, socket, socketConnected]
   );
 
   if (isLoading) {
