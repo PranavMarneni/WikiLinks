@@ -20,8 +20,8 @@ export default function StandingsPanel({
     ? leaderboard.find((player) => player.userId === user.uid)
     : null;
   const completed = challengeStats.filter(Boolean);
-  const totalClicks = completed.reduce((sum, stats) => sum + stats.clicks, 0);
-  const totalSeconds = completed.reduce((sum, stats) => sum + stats.elapsedSeconds, 0);
+  const localTotalClicks = completed.reduce((sum, stats) => sum + stats.clicks, 0);
+  const localTotalSeconds = completed.reduce((sum, stats) => sum + stats.elapsedSeconds, 0);
   const hasLocalStats = completed.length > 0;
 
   const getRankIcon = (rank) => {
@@ -76,18 +76,18 @@ export default function StandingsPanel({
 
               <div className="flex items-center gap-4 text-xs text-gray-500">
                 <div className="text-right">
-                  <div className="font-semibold text-gray-900">{player.clicks}</div>
+                  <div className="font-semibold text-gray-900">{player.totalClicks}</div>
                   <div className="text-xs">clicks</div>
                 </div>
                 <div className="text-right">
-                  <div
-                    className={`font-semibold ${
-                      player.completed ? "text-green-600" : "text-amber-600"
-                    }`}
-                  >
-                    {player.completed ? "Done" : "Playing"}
+                  <div className="font-mono font-semibold text-gray-900">
+                    {formatTime(player.totalElapsedSeconds)}
                   </div>
-                  <div className="text-xs">status</div>
+                  <div className="text-xs">time</div>
+                </div>
+                <div className="text-right">
+                  <div className="font-semibold text-green-600">{player.completedCount}/3</div>
+                  <div className="text-xs">done</div>
                 </div>
               </div>
             </div>
@@ -113,25 +113,29 @@ export default function StandingsPanel({
           {yourLiveEntry ? (
             <div className="flex items-center gap-4 text-xs text-blue-700">
               <div className="text-right">
-                <div className="font-semibold text-blue-900">{yourLiveEntry.clicks}</div>
+                <div className="font-semibold text-blue-900">{yourLiveEntry.totalClicks}</div>
                 <div>clicks</div>
               </div>
               <div className="text-right">
-                <div className="font-semibold text-blue-900">
-                  {yourLiveEntry.completed ? "Done" : "Playing"}
+                <div className="font-mono font-semibold text-blue-900">
+                  {formatTime(yourLiveEntry.totalElapsedSeconds)}
                 </div>
-                <div>status</div>
+                <div>time</div>
+              </div>
+              <div className="text-right">
+                <div className="font-semibold text-blue-900">{yourLiveEntry.completedCount}/3</div>
+                <div>done</div>
               </div>
             </div>
           ) : hasLocalStats ? (
             <div className="flex items-center gap-4 text-xs text-blue-700">
               <div className="text-right">
-                <div className="font-semibold text-blue-900">{totalClicks}</div>
+                <div className="font-semibold text-blue-900">{localTotalClicks}</div>
                 <div>clicks</div>
               </div>
               <div className="text-right">
                 <div className="font-mono font-semibold text-blue-900">
-                  {formatTime(totalSeconds)}
+                  {formatTime(localTotalSeconds)}
                 </div>
                 <div>time</div>
               </div>

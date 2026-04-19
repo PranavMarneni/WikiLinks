@@ -57,6 +57,7 @@ async function ensurePlayerSession(model, player, extraUpdate = {}) {
             },
             $setOnInsert: {
                 clicks: 0,
+                elapsedSeconds: null,
                 quit: false,
                 completed: false,
             },
@@ -67,13 +68,29 @@ async function ensurePlayerSession(model, player, extraUpdate = {}) {
 
 async function broadcastScoreboard(io, model = GameSession) {
     const userIds = connectedPlayers(io).map((player) => player.userId);
-    const sessions = await model.find({
-        userId: { $in: userIds },
-        start: globalGame.startPage,
-        target: globalGame.targetPage,
-    })
-        .sort({ clicks: 1 })
-        .select("userId displayName clicks completed -_id");
+    const sessions = await model.aggregate([
+        { $match: { userId: { $in: userIds }, completed: true } },
+        {
+            $group: {
+                _id: "$userId",
+                displayName: { $last: "$displayName" },
+                totalClicks: { $sum: "$clicks" },
+                totalElapsedSeconds: { $sum: { $ifNull: ["$elapsedSeconds", 0] } },
+                completedCount: { $sum: 1 },
+            },
+        },
+        { $sort: { totalClicks: 1, totalElapsedSeconds: 1 } },
+        {
+            $project: {
+                userId: "$_id",
+                displayName: 1,
+                totalClicks: 1,
+                totalElapsedSeconds: 1,
+                completedCount: 1,
+                _id: 0,
+            },
+        },
+    ]);
     io.emit("leaderboard:update", sessions);
 }
 
@@ -92,6 +109,7 @@ async function handleGameStart(io, data, callback, model = GameSession) {
                     start: data.startPage,
                     target: data.targetPage,
                     clicks: 0,
+                    elapsedSeconds: null,
                     quit: false,
                     completed: false,
                 },
@@ -149,7 +167,7 @@ async function handleGameClick(io, socket, data, callback, model = GameSession) 
     }
 }
 
-async function handlePlayerFinished(io, socket, callback, model = GameSession) {
+async function handlePlayerFinished(io, socket, data, callback, model = GameSession) {
     if (!hasActiveGame()) {
         if (typeof callback === "function") {
             callback({ success: false, error: "No active game" });
@@ -163,6 +181,8 @@ async function handlePlayerFinished(io, socket, callback, model = GameSession) {
         sessionId: socket.id,
     });
 
+    const elapsedSeconds = typeof data?.elapsedSeconds === "number" ? data.elapsedSeconds : null;
+
     await model.updateOne(
         gameFilterForUser(socket.userId),
         {
@@ -170,6 +190,7 @@ async function handlePlayerFinished(io, socket, callback, model = GameSession) {
                 sessionId: socket.id,
                 displayName: socket.displayName || "",
                 completed: true,
+                ...(elapsedSeconds !== null && { elapsedSeconds }),
             },
         }
     );
@@ -185,7 +206,7 @@ async function handlePlayerFinished(io, socket, callback, model = GameSession) {
 function registerGameHandlers(io, socket, model = GameSession) {
     socket.on("game:start", (data, callback) => handleGameStart(io, data, callback, model));
     socket.on("game:click", (data, callback) => handleGameClick(io, socket, data, callback, model));
-    socket.on("game:player-finished", (_data, callback) => handlePlayerFinished(io, socket, callback, model));
+    socket.on("game:player-finished", (data, callback) => handlePlayerFinished(io, socket, data, callback, model));
 }
 
 module.exports = registerGameHandlers;
