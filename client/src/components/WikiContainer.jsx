@@ -1,4 +1,4 @@
-import { Timer, MousePointer, Play, ArrowLeft, Loader2 } from "lucide-react";
+import { Timer, MousePointer, Play } from "lucide-react";
 import WikiViewer from "../WikiViewer";
 import React, { useState, useEffect, useCallback } from "react";
 import CompletionScreen from "./CompletionScreen";
@@ -13,45 +13,13 @@ export default function WikiContainer({
   challenge,
   gameStarted,
   gameComplete,
-  gameKey,
   onGameComplete,
   onReset
 }) {
-  const [challenges, setChallenges] = useState([]);
-  const [selectedChallenge, setSelectedChallenge] = useState(null);
-
   const [clicks, setClicks] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  //FETCH new challenges
-  useEffect(() => {
-    const fetchDailyChallenges = async () => {
-      try {
-        const response = await fetch("http://localhost:3001/api/challenges");
-        if (!response.ok) throw new Error("Failed to fetch challenges");
-
-        const data = await response.json();
-
-        setChallenges(data.challenges.slice(0, 3));
-      } catch (err) {
-        console.error(err);
-        setError("Could not load today's challenges. Run backend");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchDailyChallenges();
-  }, []);
-
-  useEffect(() => {
-    setClicks(0);
-    setElapsedSeconds(0);
-  }, [gameKey]);
-
+  // timer
   useEffect(() => {
     if (!gameStarted || gameComplete) return;
 
@@ -60,20 +28,9 @@ export default function WikiContainer({
     }, 1000);
 
     return () => clearInterval(id);
-  }, [gameStarted, gameComplete, gameKey]);
+  }, [gameStarted, gameComplete]);
 
-  const startChallenge = (c) => {
-    setSelectedChallenge(c);
-    setClicks(0);
-    setElapsedSeconds(0);
-  };
-
-  const quitSelection = () => {
-    setSelectedChallenge(null);
-  };
-
-  const handleStep = useCallback(({ from, to }) => {
-    console.log("STEP:", from, "to", to);
+  const handleStep = useCallback(() => {
     setClicks((prev) => prev + 1);
   }, []);
 
@@ -83,76 +40,25 @@ export default function WikiContainer({
 
   const handleLoaded = useCallback(
     (title) => {
-      console.log("LOADED:", title);
-
-      const active = selectedChallenge || challenge;
-
-      if (active && title === active.goal) {
+      if (challenge && title === challenge.goal) {
         onGameComplete({ clicks, elapsedSeconds });
       }
     },
-    [onGameComplete, selectedChallenge, challenge, clicks, elapsedSeconds]
+    [challenge, clicks, elapsedSeconds, onGameComplete]
   );
 
-  if (isLoading) {
+  if (!challenge) {
     return (
       <div className="flex-1 flex items-center justify-center text-gray-500">
-        <Loader2 className="w-8 h-8 animate-spin mr-2" />
-        Loading challenges...
+        No challenge loaded
       </div>
     );
   }
-
-  if (error) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-red-500">
-        {error}
-      </div>
-    );
-  }
-
-  if (!gameStarted && !selectedChallenge && !challenge) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center">
-         <button
-            onClick={quitSelection}
-            className="absolute top-4 left-4 p-2 hover:bg-gray-100 rounded-md"
-          >
-            <ArrowLeft className="w-5 h-5 text-gray-600" />
-          </button>
-        <div className="flex items-center gap-2 mb-6">
-          <Play className="w-6 h-6 text-green-600" />
-          <h2 className="text-xl font-bold text-gray-800">
-            Choose a Daily Challenge
-          </h2>
-        </div>
-
-        <div className="grid gap-4 w-full max-w-md">
-          {challenges.map((c, i) => (
-            <button
-              key={i}
-              onClick={() => startChallenge(c)}
-              className="p-4 border-2 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition"
-            >
-              <span className="font-semibold text-gray-900">
-                {c.start.replace(/_/g, " ")}
-              </span>
-              <span className="mx-2 text-gray-400">→</span>
-              <span className="font-semibold text-gray-900">
-                {c.end.replace(/_/g, " ")}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  const activeChallenge = selectedChallenge || challenge;
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 min-h-[500px] p-6 flex flex-col">
 
+      {/* Header */}
       <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
         <div className="flex items-center gap-2">
           <div
@@ -194,6 +100,7 @@ export default function WikiContainer({
         </div>
       </div>
 
+      {/* Game Area */}
       <div className="flex-1 bg-gray-50 rounded-lg border-2 border-gray-200 p-4 overflow-hidden">
         <div className="h-full overflow-y-auto">
           {!gameStarted && !gameComplete ? (
@@ -206,8 +113,7 @@ export default function WikiContainer({
                   Ready to Play?
                 </p>
                 <p className="text-sm text-gray-500 mt-1">
-                  Press <span className="font-medium text-green-600">Start</span>{" "}
-                  to begin the challenge
+                  Press <span className="font-medium text-green-600">Start</span> to begin the challenge
                 </p>
               </div>
             </div>
@@ -217,15 +123,14 @@ export default function WikiContainer({
               time={formatTime(elapsedSeconds)}
               onPlayAgain={onReset}
             />
-          ) : activeChallenge ? (
+          ) : (
             <WikiViewer
-              key={gameKey}
-              initialTitle={activeChallenge.start}
+              initialTitle={challenge.start}
               onStep={handleStep}
               onNavigate={handleNavigate}
               onLoaded={handleLoaded}
             />
-          ) : null}
+          )}
         </div>
       </div>
     </div>

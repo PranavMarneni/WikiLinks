@@ -11,7 +11,7 @@ export default function GameLayout({ challenge, challengeStats, gameStarted, gam
           challenge={challenge}
           gameStarted={gameStarted}
           gameComplete={gameComplete}
-          gameKey={gameKey}
+          key={gameKey}
           onGameComplete={onGameComplete}
           onReset={onReset}
         />
