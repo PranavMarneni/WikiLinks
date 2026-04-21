@@ -13,6 +13,9 @@ export default function WikiContainer({
   challenge,
   gameStarted,
   gameComplete,
+  gameKey,
+  socket,
+  socketConnected,
   onGameComplete,
   onReset
 }) {
@@ -32,7 +35,11 @@ export default function WikiContainer({
 
   const handleStep = useCallback(() => {
     setClicks((prev) => prev + 1);
-  }, []);
+
+    if (socketConnected && socket) {
+      socket.emit("game:click", { newPage: to });
+    }
+  }, [socket, socketConnected]);
 
   const handleNavigate = useCallback((title) => {
     console.log("NAVIGATE:", title);
@@ -40,11 +47,19 @@ export default function WikiContainer({
 
   const handleLoaded = useCallback(
     (title) => {
-      if (challenge && title === challenge.goal) {
+      console.log("LOADED:", title);
+
+      const active = selectedChallenge || challenge;
+
+      if (active && title === active.goal) {
+        if (socketConnected && socket) {
+          socket.emit("game:player-finished");
+        }
+
         onGameComplete({ clicks, elapsedSeconds });
       }
     },
-    [challenge, clicks, elapsedSeconds, onGameComplete]
+    [onGameComplete, selectedChallenge, challenge, clicks, elapsedSeconds, socket, socketConnected]
   );
 
   if (!challenge) {

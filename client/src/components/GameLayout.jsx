@@ -1,8 +1,20 @@
-import React from "react";
 import WikiContainer from "./WikiContainer";
 import StandingsPanel from "./StandingsPanel";
 
-export default function GameLayout({ challenge, challengeStats, gameStarted, gameComplete, gameKey, onGameComplete, onReset }) {
+export default function GameLayout({
+  challenge,
+  challengeStats,
+  leaderboard,
+  user,
+  authLoading,
+  socket,
+  socketConnected,
+  gameStarted,
+  gameComplete,
+  gameKey,
+  onGameComplete,
+  onReset,
+}) {
   return (
     <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Left: main wiki viewer (two-thirds on large screens) */}
@@ -11,7 +23,9 @@ export default function GameLayout({ challenge, challengeStats, gameStarted, gam
           challenge={challenge}
           gameStarted={gameStarted}
           gameComplete={gameComplete}
-          key={gameKey}
+          gameKey={gameKey}
+          socket={socket}
+          socketConnected={socketConnected}
           onGameComplete={onGameComplete}
           onReset={onReset}
         />
@@ -19,7 +33,13 @@ export default function GameLayout({ challenge, challengeStats, gameStarted, gam
 
       {/* Right: standings */}
       <div className="lg:col-span-1">
-        <StandingsPanel challengeStats={challengeStats} />
+        <StandingsPanel
+          challengeStats={challengeStats}
+          leaderboard={leaderboard}
+          user={user}
+          authLoading={authLoading}
+          socketConnected={socketConnected}
+        />
       </div>
     </section>
   );
