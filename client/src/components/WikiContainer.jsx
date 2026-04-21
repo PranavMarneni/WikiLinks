@@ -95,7 +95,7 @@ export default function WikiContainer({
 
       if (active && title === active.goal) {
         if (socketConnected && socket) {
-          socket.emit("game:player-finished");
+          socket.emit("game:player-finished", { elapsedSeconds });
         }
 
         onGameComplete({ clicks, elapsedSeconds });

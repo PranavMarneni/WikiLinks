@@ -7,6 +7,7 @@ const gameSessionSchema = new mongoose.Schema({
     start: String,
     target: String,
     clicks: { type: Number, default: 0, index: true },
+    elapsedSeconds: { type: Number, default: null },
     quit: { type: Boolean, default: false },
     completed: { type: Boolean, default: false },
 }, { timestamps: true });
