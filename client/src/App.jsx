@@ -5,23 +5,46 @@ import Header from "./components/Header";
 import Instructions from "./components/Instructions";
 import GameLayout from "./components/GameLayout";
 import ChallengeControls from "./components/ChallengeControls";
-import challenges from "./challenges";
 import { auth } from "./js/firebase";
 import { connectSocket, disconnectSocket } from "./socket";
 
 export default function App() {
   const [showInstructions, setShowInstructions] = useState(true);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [challenges, setChallenges] = useState([]);
   const [gameStarted, setGameStarted] = useState(false);
   const [gameComplete, setGameComplete] = useState(false);
   const [selectedChallenge, setSelectedChallenge] = useState(0);
   const [gameKey, setGameKey] = useState(0);
-  const [challengeStats, setChallengeStats] = useState(() => challenges.map(() => null));
+  const [challengeStats, setChallengeStats] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
   const [socket, setSocket] = useState(null);
   const [socketConnected, setSocketConnected] = useState(false);
   const [user, authLoading] = useAuthState(auth);
   const activeChallenge = challenges[selectedChallenge];
+
+  // fetch challenges from backend
+  useEffect(() => {
+    const fetchChallenges = async () => {
+      try {
+        const res = await fetch("http://localhost:3001/api/challenges");
+        const data = await res.json();
+        const formatted = data.challenges.map((c, i) => ({
+          id: i + 1,
+          name: `Challenge ${i + 1}`,
+          start: c.start,
+          goal: c.end,
+          startLabel: c.start.replace(/_/g, " "),
+          goalLabel: c.end.replace(/_/g, " "),
+        }));
+        setChallenges(formatted);
+        setChallengeStats(formatted.map(() => null));
+      } catch (err) {
+        console.error("Failed to load challenges:", err);
+      }
+    };
+    fetchChallenges();
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setShowScrollTop(window.scrollY > 300);
@@ -124,6 +147,11 @@ export default function App() {
     setGameStarted(false);
     setGameComplete(false);
     setGameKey((k) => k + 1);
+  }
+
+  // loading state
+  if (challenges.length === 0) {
+    return <div className="p-10 text-center">Loading challenges...</div>;
   }
 
   return (

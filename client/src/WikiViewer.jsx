@@ -46,20 +46,14 @@ export default function WikiViewer({
   function handleClick(e) {
     const anchor = e.target.closest("a");
     if (!anchor) return;
-
     e.preventDefault();
-
     const href = anchor.getAttribute("href");
     if (!isInternalWikiLink(href)) return;
-
     const nextTitle = titleFromHref(href);
     if (!nextTitle) return;
-
     console.log("[WikiViewer] Navigating to:", nextTitle);
-
     onStep?.({ from: currentTitle, to: nextTitle });
     onNavigate?.(nextTitle);
-
     setCurrentTitle(nextTitle);
   }
 
@@ -70,19 +64,30 @@ export default function WikiViewer({
       console.log("[WikiViewer] Loading page:", currentTitle);
       setLoading(true);
       setError(null);
-
       try {
         const res = await fetch(
           `${WIKI_API}/${encodeURIComponent(currentTitle)}`
         );
         if (!res.ok) throw new Error("Failed.");
 
+        // Extract the canonical resolved title from the Content-Location header
+        // e.g. "https://en.wikipedia.org/api/rest_v1/page/html/Space_exploration/..."
+        const contentLocation = res.headers.get("Content-Location");
+        let resolvedTitle = currentTitle;
+        if (contentLocation) {
+          const match = contentLocation.match(/\/page\/html\/([^/]+)/);
+          if (match) {
+            resolvedTitle = decodeURIComponent(match[1]);
+          }
+        }
+
         const rawHtml = await res.text();
         const cleanHtml = DOMPurify.sanitize(rawHtml, { USE_PROFILES: { html: true } });
 
         if (!cancelled) {
           setHtml(cleanHtml);
-          onLoadedRef.current?.(currentTitle);
+          console.log("[WikiViewer] Resolved title:", resolvedTitle);
+          onLoadedRef.current?.(resolvedTitle);
         }
       } catch (err) {
         console.error(err);
@@ -93,10 +98,8 @@ export default function WikiViewer({
     }
 
     loadPage();
-    return () => {
-      cancelled = true;
-    };
-}, [currentTitle]);
+    return () => { cancelled = true; };
+  }, [currentTitle]);
 
   if (loading) {
     return (
@@ -120,7 +123,6 @@ export default function WikiViewer({
       <h3 style={{ marginBottom: 8, textAlign: "center", fontFamily: "'EB Garamond', serif", fontSize: "1.75rem", fontWeight: "bold" }}>
         {currentTitle.replace(/_/g, " ")}
       </h3>
-
       <div
         className="wiki-content"
         onClick={handleClick}

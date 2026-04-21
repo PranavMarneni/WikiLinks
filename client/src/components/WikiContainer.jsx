@@ -1,6 +1,6 @@
 import { Timer, MousePointer, Play, ArrowLeft, Loader2 } from "lucide-react";
 import WikiViewer from "../WikiViewer";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import CompletionScreen from "./CompletionScreen";
 
 function formatTime(seconds) {
@@ -24,11 +24,13 @@ export default function WikiContainer({
 
   const [clicks, setClicks] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const clicksRef = useRef(0);
+  const elapsedRef = useRef(0);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  //FETCH new challenges
+  // Fetch daily challenges
   useEffect(() => {
     const fetchDailyChallenges = async () => {
       try {
@@ -36,8 +38,11 @@ export default function WikiContainer({
         if (!response.ok) throw new Error("Failed to fetch challenges");
 
         const data = await response.json();
-
-        setChallenges(data.challenges.slice(0, 3));
+        const formatted = data.challenges.slice(0, 3).map((c) => ({
+          start: c.start,
+          goal: c.end,
+        }));
+        setChallenges(formatted);
       } catch (err) {
         console.error(err);
         setError("Could not load today's challenges. Run backend");
@@ -52,13 +57,19 @@ export default function WikiContainer({
   useEffect(() => {
     setClicks(0);
     setElapsedSeconds(0);
+    clicksRef.current = 0;
+    elapsedRef.current = 0;
   }, [gameKey]);
 
+  // Timer
   useEffect(() => {
     if (!gameStarted || gameComplete) return;
 
     const id = setInterval(() => {
-      setElapsedSeconds((s) => s + 1);
+      setElapsedSeconds((s) => {
+        elapsedRef.current = s + 1;
+        return s + 1;
+      });
     }, 1000);
 
     return () => clearInterval(id);
@@ -68,6 +79,8 @@ export default function WikiContainer({
     setSelectedChallenge(c);
     setClicks(0);
     setElapsedSeconds(0);
+    clicksRef.current = 0;
+    elapsedRef.current = 0;
   };
 
   const quitSelection = () => {
@@ -76,7 +89,10 @@ export default function WikiContainer({
 
   const handleStep = useCallback(({ from, to }) => {
     console.log("STEP:", from, "to", to);
-    setClicks((prev) => prev + 1);
+    setClicks((prev) => {
+      clicksRef.current = prev + 1;
+      return prev + 1;
+    });
 
     if (socketConnected && socket) {
       socket.emit("game:click", { newPage: to });
@@ -93,15 +109,18 @@ export default function WikiContainer({
 
       const active = selectedChallenge || challenge;
 
-      if (active && title === active.goal) {
+      if (active && title.replace(/ /g, "_").toLowerCase() === active.goal.toLowerCase()) {
+        const finalClicks = clicksRef.current;
+        const finalElapsed = elapsedRef.current;
+
         if (socketConnected && socket) {
-          socket.emit("game:player-finished", { elapsedSeconds });
+          socket.emit("game:player-finished", { elapsedSeconds: finalElapsed });
         }
 
-        onGameComplete({ clicks, elapsedSeconds });
+        onGameComplete({ clicks: finalClicks, elapsedSeconds: finalElapsed });
       }
     },
-    [onGameComplete, selectedChallenge, challenge, clicks, elapsedSeconds, socket, socketConnected]
+    [onGameComplete, selectedChallenge, challenge, socket, socketConnected]
   );
 
   if (isLoading) {
@@ -124,12 +143,12 @@ export default function WikiContainer({
   if (!gameStarted && !selectedChallenge && !challenge) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center">
-         <button
-            onClick={quitSelection}
-            className="absolute top-4 left-4 p-2 hover:bg-gray-100 rounded-md"
-          >
-            <ArrowLeft className="w-5 h-5 text-gray-600" />
-          </button>
+        <button
+          onClick={quitSelection}
+          className="absolute top-4 left-4 p-2 hover:bg-gray-100 rounded-md"
+        >
+          <ArrowLeft className="w-5 h-5 text-gray-600" />
+        </button>
         <div className="flex items-center gap-2 mb-6">
           <Play className="w-6 h-6 text-green-600" />
           <h2 className="text-xl font-bold text-gray-800">
@@ -149,7 +168,7 @@ export default function WikiContainer({
               </span>
               <span className="mx-2 text-gray-400">→</span>
               <span className="font-semibold text-gray-900">
-                {c.end.replace(/_/g, " ")}
+                {c.goal.replace(/_/g, " ")}
               </span>
             </button>
           ))}
@@ -163,6 +182,7 @@ export default function WikiContainer({
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 min-h-[500px] p-6 flex flex-col">
 
+      {/* Header */}
       <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
         <div className="flex items-center gap-2">
           <div
@@ -204,6 +224,7 @@ export default function WikiContainer({
         </div>
       </div>
 
+      {/* Game Area */}
       <div className="flex-1 bg-gray-50 rounded-lg border-2 border-gray-200 p-4 overflow-hidden">
         <div className="h-full overflow-y-auto">
           {!gameStarted && !gameComplete ? (
