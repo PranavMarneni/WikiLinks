@@ -15,9 +15,18 @@ export default function ChallengeControls({
   gameComplete,
   onSelectChallenge,
   onStart,
+  user,
+  authLoading,
 }) {
   const inProgress = gameStarted && !gameComplete;
   const current = challenges[selectedChallenge];
+  const loggedOut = !authLoading && !user;
+  const startDisabled = inProgress || !user;
+  const startTitle = inProgress
+    ? "Finish the current challenge first"
+    : loggedOut
+    ? "Log in to play"
+    : undefined;
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -61,16 +70,22 @@ export default function ChallengeControls({
         </div>
 
         {/* Start button */}
-        <button
-          onClick={onStart}
-          disabled={inProgress}
-          className={`flex items-center gap-2 px-6 py-2 rounded-md bg-green-600 text-white text-sm font-medium transition-colors shadow-sm ${
-            inProgress ? "opacity-40 cursor-not-allowed" : "hover:bg-green-700"
-          }`}
-        >
-          <Play className="w-4 h-4" />
-          Start
-        </button>
+        <div className="flex flex-col items-end gap-1">
+          <button
+            onClick={onStart}
+            disabled={startDisabled}
+            title={startTitle}
+            className={`flex items-center gap-2 px-6 py-2 rounded-md bg-green-600 text-white text-sm font-medium transition-colors shadow-sm ${
+              startDisabled ? "opacity-40 cursor-not-allowed" : "hover:bg-green-700"
+            }`}
+          >
+            <Play className="w-4 h-4" />
+            Start
+          </button>
+          {loggedOut && (
+            <span className="text-xs text-gray-500">Log in to play</span>
+          )}
+        </div>
       </div>
     </div>
   );

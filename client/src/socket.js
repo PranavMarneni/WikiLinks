@@ -1,11 +1,13 @@
 import { io } from 'socket.io-client';
 
+const API_URL = import.meta.env.VITE_APP_API_URL || 'http://localhost:3001';
+
 let socket = null;
 
 export function connectSocket(token) {
     if (socket) socket.disconnect();
 
-    socket = io('http://localhost:3001', {
+    socket = io(API_URL, {
         auth: { token },
     });
 

@@ -1,28 +1,13 @@
 const GameSession = require("../models/GameSession");
 
-let globalGame = { startPage: null, targetPage: null };
+const BROADCAST_INTERVAL_MS = 1000;
+let broadcastTimer = null;
 
-function setGlobalGame(startPage, targetPage) {
-    globalGame = { startPage, targetPage };
-}
-
-function resetGlobalGame() {
-    globalGame = { startPage: null, targetPage: null };
-}
-
-function getGlobalGame() {
-    return { ...globalGame };
-}
-
-function hasActiveGame() {
-    return Boolean(globalGame.startPage && globalGame.targetPage);
-}
-
-function gameFilterForUser(userId) {
+function gameFilterForUser(userId, game) {
     return {
         userId,
-        start: globalGame.startPage,
-        target: globalGame.targetPage,
+        start: game.startPage,
+        target: game.targetPage,
     };
 }
 
@@ -37,33 +22,6 @@ function connectedPlayers(io) {
         });
     }
     return [...players.values()];
-}
-
-async function ensurePlayerSession(model, player, extraUpdate = {}) {
-    if (!hasActiveGame()) {
-        return;
-    }
-
-    await model.updateOne(
-        gameFilterForUser(player.userId),
-        {
-            $set: {
-                userId: player.userId,
-                displayName: player.displayName || "",
-                sessionId: player.sessionId,
-                start: globalGame.startPage,
-                target: globalGame.targetPage,
-                ...extraUpdate,
-            },
-            $setOnInsert: {
-                clicks: 0,
-                elapsedSeconds: null,
-                quit: false,
-                completed: false,
-            },
-        },
-        { upsert: true }
-    );
 }
 
 async function broadcastScoreboard(io, model = GameSession) {
@@ -94,35 +52,39 @@ async function broadcastScoreboard(io, model = GameSession) {
     io.emit("leaderboard:update", sessions);
 }
 
-async function handleGameStart(io, data, callback, model = GameSession) {
-    setGlobalGame(data.startPage, data.targetPage);
+function scheduleBroadcast(io, model = GameSession) {
+    if (broadcastTimer) return;
+    broadcastTimer = setTimeout(() => {
+        broadcastTimer = null;
+        broadcastScoreboard(io, model).catch((err) => {
+            console.error("Leaderboard broadcast failed:", err.message);
+        });
+    }, BROADCAST_INTERVAL_MS);
+}
 
-    const players = connectedPlayers(io);
-    const ops = players.map((player) => ({
-        updateOne: {
-            filter: gameFilterForUser(player.userId),
-            update: {
-                $set: {
-                    userId: player.userId,
-                    displayName: player.displayName || "",
-                    sessionId: player.sessionId,
-                    start: data.startPage,
-                    target: data.targetPage,
-                    clicks: 0,
-                    elapsedSeconds: null,
-                    quit: false,
-                    completed: false,
-                },
+async function handleGameStart(io, socket, data, callback, model = GameSession) {
+    const game = { startPage: data.startPage, targetPage: data.targetPage };
+    socket.activeGame = game;
+
+    await model.updateOne(
+        gameFilterForUser(socket.userId, game),
+        {
+            $set: {
+                userId: socket.userId,
+                displayName: socket.displayName || "",
+                sessionId: socket.id,
+                start: game.startPage,
+                target: game.targetPage,
+                clicks: 0,
+                elapsedSeconds: null,
+                quit: false,
+                completed: false,
             },
-            upsert: true,
         },
-    }));
+        { upsert: true }
+    );
 
-    if (ops.length) {
-        await model.bulkWrite(ops);
-    }
-
-    io.emit("game:started", { startPage: data.startPage, targetPage: data.targetPage });
+    socket.emit("game:started", { startPage: game.startPage, targetPage: game.targetPage });
     await broadcastScoreboard(io, model);
 
     if (typeof callback === "function") {
@@ -131,35 +93,37 @@ async function handleGameStart(io, data, callback, model = GameSession) {
 }
 
 async function handleGameClick(io, socket, data, callback, model = GameSession) {
-    if (!hasActiveGame()) {
+    const game = socket.activeGame;
+    if (!game) {
         if (typeof callback === "function") {
             callback({ success: false, error: "No active game" });
         }
         return;
     }
 
-    await ensurePlayerSession(model, {
-        userId: socket.userId,
-        displayName: socket.displayName,
-        sessionId: socket.id,
-    });
-
     await model.updateOne(
-        gameFilterForUser(socket.userId),
+        gameFilterForUser(socket.userId, game),
         {
-            $set: { sessionId: socket.id, displayName: socket.displayName || "" },
+            $set: {
+                userId: socket.userId,
+                displayName: socket.displayName || "",
+                sessionId: socket.id,
+                start: game.startPage,
+                target: game.targetPage,
+            },
             $inc: { clicks: 1 },
-        }
+        },
+        { upsert: true }
     );
 
-    if (data.newPage === globalGame.targetPage) {
+    if (data.newPage === game.targetPage) {
         await model.updateOne(
-            gameFilterForUser(socket.userId),
+            gameFilterForUser(socket.userId, game),
             { $set: { completed: true } }
         );
     }
 
-    await broadcastScoreboard(io, model);
+    scheduleBroadcast(io, model);
     io.emit("game:clicked");
 
     if (typeof callback === "function") {
@@ -168,31 +132,30 @@ async function handleGameClick(io, socket, data, callback, model = GameSession) 
 }
 
 async function handlePlayerFinished(io, socket, data, callback, model = GameSession) {
-    if (!hasActiveGame()) {
+    const game = socket.activeGame;
+    if (!game) {
         if (typeof callback === "function") {
             callback({ success: false, error: "No active game" });
         }
         return;
     }
 
-    await ensurePlayerSession(model, {
-        userId: socket.userId,
-        displayName: socket.displayName,
-        sessionId: socket.id,
-    });
-
     const elapsedSeconds = typeof data?.elapsedSeconds === "number" ? data.elapsedSeconds : null;
 
     await model.updateOne(
-        gameFilterForUser(socket.userId),
+        gameFilterForUser(socket.userId, game),
         {
             $set: {
-                sessionId: socket.id,
+                userId: socket.userId,
                 displayName: socket.displayName || "",
+                sessionId: socket.id,
+                start: game.startPage,
+                target: game.targetPage,
                 completed: true,
                 ...(elapsedSeconds !== null && { elapsedSeconds }),
             },
-        }
+        },
+        { upsert: true }
     );
 
     await broadcastScoreboard(io, model);
@@ -204,7 +167,7 @@ async function handlePlayerFinished(io, socket, data, callback, model = GameSess
 }
 
 function registerGameHandlers(io, socket, model = GameSession) {
-    socket.on("game:start", (data, callback) => handleGameStart(io, data, callback, model));
+    socket.on("game:start", (data, callback) => handleGameStart(io, socket, data, callback, model));
     socket.on("game:click", (data, callback) => handleGameClick(io, socket, data, callback, model));
     socket.on("game:player-finished", (data, callback) => handlePlayerFinished(io, socket, data, callback, model));
 }

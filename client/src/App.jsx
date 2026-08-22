@@ -8,6 +8,8 @@ import ChallengeControls from "./components/ChallengeControls";
 import { auth } from "./js/firebase";
 import { connectSocket, disconnectSocket } from "./socket";
 
+const API_URL = import.meta.env.VITE_APP_API_URL || "http://localhost:3001";
+
 export default function App() {
   const [showInstructions, setShowInstructions] = useState(true);
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -27,7 +29,7 @@ export default function App() {
   useEffect(() => {
     const fetchChallenges = async () => {
       try {
-        const res = await fetch("http://localhost:3001/api/challenges");
+        const res = await fetch(`${API_URL}/api/challenges`);
         const data = await res.json();
         const formatted = data.challenges.map((c, i) => ({
           id: i + 1,
@@ -115,6 +117,8 @@ export default function App() {
   }, [user, authLoading]);
 
   function handleStart() {
+    if (!user) return;
+
     setGameStarted(true);
     setGameComplete(false);
 
@@ -167,6 +171,8 @@ export default function App() {
           gameComplete={gameComplete}
           onSelectChallenge={handleSelectChallenge}
           onStart={handleStart}
+          user={user}
+          authLoading={authLoading}
         />
         <GameLayout
           challenge={challenges[selectedChallenge]}
