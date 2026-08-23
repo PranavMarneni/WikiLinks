@@ -19,6 +19,7 @@ export default function App() {
   const [selectedChallenge, setSelectedChallenge] = useState(0);
   const [gameKey, setGameKey] = useState(0);
   const [challengeStats, setChallengeStats] = useState([]);
+  const [todaysProgress, setTodaysProgress] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
   const [socket, setSocket] = useState(null);
   const [socketConnected, setSocketConnected] = useState(false);
@@ -54,6 +55,25 @@ export default function App() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // once both today's challenges and the user's saved progress for today are
+  // in, mark any challenges already completed today so they can't be redone
+  useEffect(() => {
+    if (!todaysProgress || challenges.length === 0) return;
+
+    setChallengeStats((prev) => {
+      const next = [...prev];
+      challenges.forEach((c, idx) => {
+        const match = todaysProgress.find(
+          (p) => p.start === c.start && p.target === c.goal && p.completed
+        );
+        if (match) {
+          next[idx] = { clicks: match.clicks, elapsedSeconds: match.elapsedSeconds };
+        }
+      });
+      return next;
+    });
+  }, [todaysProgress, challenges]);
+
   useEffect(() => {
     if (authLoading) {
       return;
@@ -76,6 +96,9 @@ export default function App() {
     const handleLeaderboardUpdate = (entries) => {
       setLeaderboard(Array.isArray(entries) ? entries : []);
     };
+    const handleProgress = (sessions) => {
+      setTodaysProgress(Array.isArray(sessions) ? sessions : []);
+    };
 
     async function initRealtime() {
       try {
@@ -89,6 +112,7 @@ export default function App() {
         activeSocket.on("disconnect", handleDisconnect);
         activeSocket.on("connect_error", handleConnectError);
         activeSocket.on("leaderboard:update", handleLeaderboardUpdate);
+        activeSocket.on("game:progress", handleProgress);
 
         setLeaderboard([]);
         setSocket(activeSocket);
@@ -110,6 +134,7 @@ export default function App() {
         activeSocket.off("disconnect", handleDisconnect);
         activeSocket.off("connect_error", handleConnectError);
         activeSocket.off("leaderboard:update", handleLeaderboardUpdate);
+        activeSocket.off("game:progress", handleProgress);
       }
 
       disconnectSocket();
@@ -118,15 +143,22 @@ export default function App() {
 
   function handleStart() {
     if (!user) return;
+    if (challengeStats[selectedChallenge]) return; // already completed today
 
     setGameStarted(true);
     setGameComplete(false);
 
     if (socket?.connected && activeChallenge) {
-      socket.emit("game:start", {
-        startPage: activeChallenge.start,
-        targetPage: activeChallenge.goal,
-      });
+      socket.emit(
+        "game:start",
+        { startPage: activeChallenge.start, targetPage: activeChallenge.goal },
+        (response) => {
+          if (!response?.success) {
+            console.error("Failed to start challenge:", response?.error);
+            setGameStarted(false);
+          }
+        }
+      );
     }
   }
 
@@ -158,6 +190,9 @@ export default function App() {
     return <div className="p-10 text-center">Loading challenges...</div>;
   }
 
+  const allChallengesComplete =
+    challengeStats.length === challenges.length && challengeStats.every(Boolean);
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <Header onOpenInstructions={() => setShowInstructions(true)} />
@@ -177,6 +212,7 @@ export default function App() {
         <GameLayout
           challenge={challenges[selectedChallenge]}
           challengeStats={challengeStats}
+          allChallengesComplete={allChallengesComplete}
           leaderboard={leaderboard}
           user={user}
           authLoading={authLoading}

@@ -4,6 +4,7 @@ import StandingsPanel from "./StandingsPanel";
 export default function GameLayout({
   challenge,
   challengeStats,
+  allChallengesComplete,
   leaderboard,
   user,
   authLoading,
@@ -21,6 +22,7 @@ export default function GameLayout({
       <div className="lg:col-span-2">
         <WikiContainer
           challenge={challenge}
+          allChallengesComplete={allChallengesComplete}
           gameStarted={gameStarted}
           gameComplete={gameComplete}
           gameKey={gameKey}

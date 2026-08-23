@@ -1,11 +1,17 @@
 const GameSession = require("../models/GameSession");
 
 const BROADCAST_INTERVAL_MS = 1000;
+const TOTAL_CHALLENGES = 3;
 let broadcastTimer = null;
+
+function getDateKey() {
+    return new Date().toISOString().slice(0, 10);
+}
 
 function gameFilterForUser(userId, game) {
     return {
         userId,
+        dateKey: game.dateKey,
         start: game.startPage,
         target: game.targetPage,
     };
@@ -25,9 +31,8 @@ function connectedPlayers(io) {
 }
 
 async function broadcastScoreboard(io, model = GameSession) {
-    const userIds = connectedPlayers(io).map((player) => player.userId);
     const sessions = await model.aggregate([
-        { $match: { userId: { $in: userIds }, completed: true } },
+        { $match: { dateKey: getDateKey(), completed: true } },
         {
             $group: {
                 _id: "$userId",
@@ -37,6 +42,7 @@ async function broadcastScoreboard(io, model = GameSession) {
                 completedCount: { $sum: 1 },
             },
         },
+        { $match: { completedCount: TOTAL_CHALLENGES } },
         { $sort: { totalClicks: 1, totalElapsedSeconds: 1 } },
         {
             $project: {
@@ -62,8 +68,28 @@ function scheduleBroadcast(io, model = GameSession) {
     }, BROADCAST_INTERVAL_MS);
 }
 
+async function getTodaysProgress(userId, model = GameSession) {
+    const sessions = await model.find({ userId, dateKey: getDateKey() }).lean();
+    return sessions.map((s) => ({
+        start: s.start,
+        target: s.target,
+        completed: s.completed,
+        clicks: s.clicks,
+        elapsedSeconds: s.elapsedSeconds,
+    }));
+}
+
 async function handleGameStart(io, socket, data, callback, model = GameSession) {
-    const game = { startPage: data.startPage, targetPage: data.targetPage };
+    const game = { startPage: data.startPage, targetPage: data.targetPage, dateKey: getDateKey() };
+
+    const existing = await model.findOne(gameFilterForUser(socket.userId, game)).lean();
+    if (existing?.completed) {
+        if (typeof callback === "function") {
+            callback({ success: false, error: "Challenge already completed today" });
+        }
+        return;
+    }
+
     socket.activeGame = game;
 
     await model.updateOne(
@@ -75,6 +101,7 @@ async function handleGameStart(io, socket, data, callback, model = GameSession) 
                 sessionId: socket.id,
                 start: game.startPage,
                 target: game.targetPage,
+                dateKey: game.dateKey,
                 clicks: 0,
                 elapsedSeconds: null,
                 quit: false,
@@ -110,6 +137,7 @@ async function handleGameClick(io, socket, data, callback, model = GameSession) 
                 sessionId: socket.id,
                 start: game.startPage,
                 target: game.targetPage,
+                dateKey: game.dateKey,
             },
             $inc: { clicks: 1 },
         },
@@ -151,6 +179,7 @@ async function handlePlayerFinished(io, socket, data, callback, model = GameSess
                 sessionId: socket.id,
                 start: game.startPage,
                 target: game.targetPage,
+                dateKey: game.dateKey,
                 completed: true,
                 ...(elapsedSeconds !== null && { elapsedSeconds }),
             },
@@ -173,3 +202,5 @@ function registerGameHandlers(io, socket, model = GameSession) {
 }
 
 module.exports = registerGameHandlers;
+module.exports.getTodaysProgress = getTodaysProgress;
+module.exports.getDateKey = getDateKey;

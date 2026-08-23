@@ -1,4 +1,4 @@
-import { Timer, MousePointer, Play } from "lucide-react";
+import { Timer, MousePointer, Play, CalendarCheck } from "lucide-react";
 import WikiViewer from "../WikiViewer";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import CompletionScreen from "./CompletionScreen";
@@ -11,6 +11,7 @@ function formatTime(seconds) {
 
 export default function WikiContainer({
   challenge,
+  allChallengesComplete,
   gameStarted,
   gameComplete,
   gameKey,
@@ -127,7 +128,21 @@ export default function WikiContainer({
       {/* Game Area */}
       <div className="flex-1 bg-gray-50 rounded-lg border-2 border-gray-200 p-4 overflow-hidden">
         <div className="h-full overflow-y-auto">
-          {!gameStarted && !gameComplete ? (
+          {allChallengesComplete && !gameStarted && !gameComplete ? (
+            <div className="flex flex-col items-center justify-center h-full min-h-[300px] gap-4 text-center">
+              <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+                <CalendarCheck className="w-8 h-8 text-green-600" />
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-gray-700">
+                  You have completed your challenges for today
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Come back tomorrow for a new set of challenges
+                </p>
+              </div>
+            </div>
+          ) : !gameStarted && !gameComplete ? (
             <div className="flex flex-col items-center justify-center h-full min-h-[300px] gap-4 text-center">
               <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
                 <Play className="w-8 h-8 text-green-600" />

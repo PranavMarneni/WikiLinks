@@ -1,5 +1,5 @@
 import React from "react";
-import { Play, ArrowRight } from "lucide-react";
+import { Play, ArrowRight, Check } from "lucide-react";
 
 function formatTime(seconds) {
   const m = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -21,11 +21,14 @@ export default function ChallengeControls({
   const inProgress = gameStarted && !gameComplete;
   const current = challenges[selectedChallenge];
   const loggedOut = !authLoading && !user;
-  const startDisabled = inProgress || !user;
+  const alreadyCompleted = Boolean(challengeStats[selectedChallenge]);
+  const startDisabled = inProgress || !user || alreadyCompleted;
   const startTitle = inProgress
     ? "Finish the current challenge first"
     : loggedOut
     ? "Log in to play"
+    : alreadyCompleted
+    ? "Already completed today"
     : undefined;
 
   return (
@@ -51,7 +54,8 @@ export default function ChallengeControls({
                     {c.name}
                   </button>
                   {stats && (
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                      <Check className="w-3 h-3 text-green-600" />
                       {formatTime(stats.elapsedSeconds)} · {stats.clicks} clicks
                     </span>
                   )}
@@ -80,7 +84,7 @@ export default function ChallengeControls({
             }`}
           >
             <Play className="w-4 h-4" />
-            Start
+            {alreadyCompleted ? "Completed" : "Start"}
           </button>
           {loggedOut && (
             <span className="text-xs text-gray-500">Log in to play</span>

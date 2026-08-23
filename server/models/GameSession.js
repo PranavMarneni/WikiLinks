@@ -6,6 +6,7 @@ const gameSessionSchema = new mongoose.Schema({
     sessionId: { type: String, index: true },
     start: String,
     target: String,
+    dateKey: { type: String, required: true, index: true },
     clicks: { type: Number, default: 0, index: true },
     elapsedSeconds: { type: Number, default: null },
     quit: { type: Boolean, default: false },
@@ -13,11 +14,12 @@ const gameSessionSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 gameSessionSchema.index(
-    { userId: 1, start: 1, target: 1 },
+    { userId: 1, dateKey: 1, start: 1, target: 1 },
     {
         unique: true,
         partialFilterExpression: {
             userId: { $type: 'string' },
+            dateKey: { $type: 'string' },
             start: { $type: 'string' },
             target: { $type: 'string' },
         },
