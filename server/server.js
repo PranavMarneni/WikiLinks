@@ -49,9 +49,11 @@ if (mongoConfigured) {
   });
 }
 
+let io = null;
+
 if (realtimeEnabled) {
   const initSocket = require("./socket");
-  initSocket(httpServer);
+  io = initSocket(httpServer);
 } else {
   console.log(
     "Realtime features disabled. Set MONGODB_URI and FIREBASE_PROJECT_ID to enable sockets."
@@ -59,7 +61,8 @@ if (realtimeEnabled) {
 }
 
 if (process.env.OPENROUTER_API_KEY) {
-  require("./scheduler");
+  const initScheduler = require("./scheduler");
+  initScheduler(io);
 } else {
   console.log(
     "Daily challenge generation disabled. Set OPENROUTER_API_KEY to enable it."

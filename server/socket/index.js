@@ -82,6 +82,8 @@ function initSocket(httpServer) {
 
         registerGameHandlers(io, socket);
     });
+
+    return io;
 }
 
 module.exports = initSocket;

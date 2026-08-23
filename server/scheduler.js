@@ -5,6 +5,8 @@ const path = require("path");
 const { generateWithRetry } = require("./generate");
 const Challenges = require("./models/Challenges");
 const APP_TIMEZONE = require("./config/timezone");
+const registerGameHandlers = require("./socket/gameHandlers");
+const { getLeaderboard } = registerGameHandlers;
 
 const FILE = path.join(__dirname, "challenges.json");
 const mongoConfigured = Boolean(process.env.MONGODB_URI);
@@ -38,7 +40,7 @@ async function hasStoredChallenges() {
   return fs.existsSync(FILE);
 }
 
-async function run() {
+async function run(io) {
   try {
     console.log("Generating new challenges...");
 
@@ -47,21 +49,38 @@ async function run() {
     await persist(data);
 
     console.log("New challenges generated.");
+
+    // Push the new day's challenges and a fresh leaderboard to anyone already
+    // connected — otherwise a browser tab open through midnight would keep
+    // showing yesterday's challenges/leaderboard until its next refresh.
+    if (io) {
+      io.emit("challenges:updated", { challenges: data.challenges });
+      try {
+        const board = await getLeaderboard();
+        io.emit("leaderboard:update", board);
+      } catch (err) {
+        console.error("Failed to broadcast reset leaderboard:", err.message);
+      }
+    }
   } catch (err) {
     console.error("Failed:", err.message);
   }
 }
 
-cron.schedule("0 0 * * *", () => {
-  console.log("12:00 AM trigger.");
-  run();
-}, { timezone: APP_TIMEZONE });
+function initScheduler(io) {
+  cron.schedule("0 0 * * *", () => {
+    console.log("12:00 AM trigger.");
+    run(io);
+  }, { timezone: APP_TIMEZONE });
 
-(async () => {
-  if (await hasStoredChallenges()) {
-    console.log("Challenges found. Waiting for 12:00 AM.");
-  } else {
-    console.log("No challenges found, generating...");
-    run();
-  }
-})();
+  (async () => {
+    if (await hasStoredChallenges()) {
+      console.log("Challenges found. Waiting for 12:00 AM.");
+    } else {
+      console.log("No challenges found, generating...");
+      run(io);
+    }
+  })();
+}
+
+module.exports = initScheduler;

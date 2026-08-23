@@ -1,16 +1,16 @@
 {
   "challenges": [
     {
-      "start": "Chocolate",
-      "end": "NASA"
+      "start": "Roller_coaster",
+      "end": "Chocolate"
     },
     {
-      "start": "The_Wizard_of_Oz",
-      "end": "Giraffe"
+      "start": "Pineapple",
+      "end": "Karaoke"
     },
     {
-      "start": "Soccer",
-      "end": "Albert_Einstein"
+      "start": "Shark",
+      "end": "Olympic_Games"
     }
   ]
 }

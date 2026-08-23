@@ -10,6 +10,17 @@ import { connectSocket, disconnectSocket } from "./socket";
 
 const API_URL = import.meta.env.VITE_APP_API_URL || "http://localhost:3001";
 
+function formatChallenges(data) {
+  return data.challenges.map((c, i) => ({
+    id: i + 1,
+    name: `Challenge ${i + 1}`,
+    start: c.start,
+    goal: c.end,
+    startLabel: c.start.replace(/_/g, " "),
+    goalLabel: c.end.replace(/_/g, " "),
+  }));
+}
+
 export default function App() {
   const [showInstructions, setShowInstructions] = useState(true);
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -32,14 +43,7 @@ export default function App() {
       try {
         const res = await fetch(`${API_URL}/api/challenges`);
         const data = await res.json();
-        const formatted = data.challenges.map((c, i) => ({
-          id: i + 1,
-          name: `Challenge ${i + 1}`,
-          start: c.start,
-          goal: c.end,
-          startLabel: c.start.replace(/_/g, " "),
-          goalLabel: c.end.replace(/_/g, " "),
-        }));
+        const formatted = formatChallenges(data);
         setChallenges(formatted);
         setChallengeStats(formatted.map(() => null));
       } catch (err) {
@@ -99,6 +103,19 @@ export default function App() {
     const handleProgress = (sessions) => {
       setTodaysProgress(Array.isArray(sessions) ? sessions : []);
     };
+    const handleChallengesUpdated = (data) => {
+      // fires when the daily challenges regenerate (midnight) — start the new
+      // day fresh for anyone already connected, rather than leaving them on
+      // yesterday's challenges/locked state until their next reload
+      const formatted = formatChallenges(data);
+      setChallenges(formatted);
+      setChallengeStats(formatted.map(() => null));
+      setTodaysProgress([]);
+      setSelectedChallenge(0);
+      setGameStarted(false);
+      setGameComplete(false);
+      setGameKey((k) => k + 1);
+    };
 
     async function initRealtime() {
       try {
@@ -113,6 +130,7 @@ export default function App() {
         activeSocket.on("connect_error", handleConnectError);
         activeSocket.on("leaderboard:update", handleLeaderboardUpdate);
         activeSocket.on("game:progress", handleProgress);
+        activeSocket.on("challenges:updated", handleChallengesUpdated);
 
         setLeaderboard([]);
         setSocket(activeSocket);
@@ -135,6 +153,7 @@ export default function App() {
         activeSocket.off("connect_error", handleConnectError);
         activeSocket.off("leaderboard:update", handleLeaderboardUpdate);
         activeSocket.off("game:progress", handleProgress);
+        activeSocket.off("challenges:updated", handleChallengesUpdated);
       }
 
       disconnectSocket();
