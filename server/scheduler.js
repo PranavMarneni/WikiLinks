@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const { generateWithRetry } = require("./generate");
 const Challenges = require("./models/Challenges");
+const APP_TIMEZONE = require("./config/timezone");
 
 const FILE = path.join(__dirname, "challenges.json");
 const mongoConfigured = Boolean(process.env.MONGODB_URI);
@@ -54,7 +55,7 @@ async function run() {
 cron.schedule("0 0 * * *", () => {
   console.log("12:00 AM trigger.");
   run();
-});
+}, { timezone: APP_TIMEZONE });
 
 (async () => {
   if (await hasStoredChallenges()) {

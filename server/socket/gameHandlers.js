@@ -1,11 +1,19 @@
 const GameSession = require("../models/GameSession");
+const APP_TIMEZONE = require("../config/timezone");
 
 const BROADCAST_INTERVAL_MS = 1000;
 const TOTAL_CHALLENGES = 3;
 let broadcastTimer = null;
 
+const dateKeyFormatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: APP_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+});
+
 function getDateKey() {
-    return new Date().toISOString().slice(0, 10);
+    return dateKeyFormatter.format(new Date());
 }
 
 function gameFilterForUser(userId, game) {
