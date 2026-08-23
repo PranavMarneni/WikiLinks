@@ -30,8 +30,8 @@ function connectedPlayers(io) {
     return [...players.values()];
 }
 
-async function broadcastScoreboard(io, model = GameSession) {
-    const sessions = await model.aggregate([
+async function getLeaderboard(model = GameSession) {
+    return model.aggregate([
         { $match: { dateKey: getDateKey(), completed: true } },
         {
             $group: {
@@ -55,6 +55,10 @@ async function broadcastScoreboard(io, model = GameSession) {
             },
         },
     ]);
+}
+
+async function broadcastScoreboard(io, model = GameSession) {
+    const sessions = await getLeaderboard(model);
     io.emit("leaderboard:update", sessions);
 }
 
@@ -204,3 +208,4 @@ function registerGameHandlers(io, socket, model = GameSession) {
 module.exports = registerGameHandlers;
 module.exports.getTodaysProgress = getTodaysProgress;
 module.exports.getDateKey = getDateKey;
+module.exports.getLeaderboard = getLeaderboard;

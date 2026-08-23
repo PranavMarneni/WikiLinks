@@ -1,7 +1,7 @@
 const { Server } = require('socket.io');
 const admin = require('../config/firebase');
 const registerGameHandlers = require('./gameHandlers');
-const { getTodaysProgress } = registerGameHandlers;
+const { getTodaysProgress, getLeaderboard } = registerGameHandlers;
 const GameSession = require('../models/GameSession');
 
 function createSocketAuthMiddleware(adminInstance = admin) {
@@ -62,6 +62,13 @@ function initSocket(httpServer) {
             socket.emit('game:progress', progress);
         } catch (err) {
             console.error('Failed to load today\'s progress:', err.message);
+        }
+
+        try {
+            const board = await getLeaderboard();
+            socket.emit('leaderboard:update', board);
+        } catch (err) {
+            console.error('Failed to load leaderboard:', err.message);
         }
 
         socket.on('disconnect', async () => {
