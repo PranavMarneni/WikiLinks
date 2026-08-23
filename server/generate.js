@@ -119,17 +119,75 @@ Output ONLY JSON. Do not include markdown formatting or conversational text.`;
   }
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Resolves a title to Wikipedia's canonical form the same way the client does
+// (WikiViewer.jsx), by reading the dc:isVersionOf link out of the page HTML.
+// This must match the client's resolution exactly, or a challenge whose LLM-
+// generated title is itself a redirect/alias (e.g. "Shakespeare" instead of
+// "William_Shakespeare") would never register as completed, since the client
+// reports back the true canonical title once it resolves the redirect.
+async function resolveCanonicalTitle(title, attempt = 1) {
+  try {
+    const res = await fetch(
+      `https://en.wikipedia.org/api/rest_v1/page/html/${encodeURIComponent(title)}`,
+      { headers: { "User-Agent": "WikiLinks-ChallengeGenerator/1.0" } }
+    );
+
+    if (!res.ok) {
+      if (attempt < 3) {
+        await sleep(1000 * attempt);
+        return resolveCanonicalTitle(title, attempt + 1);
+      }
+      return null;
+    }
+
+    const html = await res.text();
+    const match = html.match(/<link rel="dc:isVersionOf" href="[^"]*\/wiki\/([^"]+)"/);
+    return match ? decodeURIComponent(match[1]) : title;
+  } catch (err) {
+    if (attempt < 3) {
+      await sleep(1000 * attempt);
+      return resolveCanonicalTitle(title, attempt + 1);
+    }
+    console.error(`Failed to resolve canonical title for "${title}":`, err.message);
+    return null;
+  }
+}
+
+async function canonicalizeChallenges(data) {
+  const challenges = [];
+  for (const c of data.challenges) {
+    const start = await resolveCanonicalTitle(c.start);
+    await sleep(400);
+    const end = await resolveCanonicalTitle(c.end);
+    await sleep(400);
+
+    if (!start || !end) return null;
+    challenges.push({ start, end });
+  }
+  return { challenges };
+}
+
 async function generateWithRetry() {
   for (let i = 0; i < 5; i++) {
     console.log(`\nAttempt ${i + 1}`);
 
     const result = await fetchChallenges();
 
-    if (isValid(result)) {
-      return result;
+    if (!isValid(result)) {
+      console.log("Failed: validation/fetching failure.");
+      continue;
     }
 
-    console.log("Failed: validation/fetching failure.");
+    const canonicalized = await canonicalizeChallenges(result);
+
+    if (!canonicalized || !isValid(canonicalized)) {
+      console.log("Failed: could not resolve canonical Wikipedia titles, or titles collided after resolution.");
+      continue;
+    }
+
+    return canonicalized;
   }
 
   throw new Error("Failed: after5 attempts.");

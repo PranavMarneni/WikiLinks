@@ -2,15 +2,15 @@
   "challenges": [
     {
       "start": "Chocolate",
-      "end": "Space_Exploration"
+      "end": "NASA"
     },
     {
-      "start": "Sharks",
-      "end": "Mount_Everest"
+      "start": "The_Wizard_of_Oz",
+      "end": "Giraffe"
     },
     {
-      "start": "Pirates",
-      "end": "Modern_Dance"
+      "start": "Soccer",
+      "end": "Albert_Einstein"
     }
   ]
 }

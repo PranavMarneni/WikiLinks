@@ -70,18 +70,20 @@ export default function WikiViewer({
         );
         if (!res.ok) throw new Error("Failed.");
 
-        // Extract the canonical resolved title from the Content-Location header
-        // e.g. "https://en.wikipedia.org/api/rest_v1/page/html/Space_exploration/..."
-        const contentLocation = res.headers.get("Content-Location");
+        const rawHtml = await res.text();
+
+        // Extract the canonical resolved title from the page's own metadata,
+        // e.g. <link rel="dc:isVersionOf" href="//en.wikipedia.org/wiki/William_Shakespeare"/>.
+        // Wikipedia's REST API doesn't send a Content-Location header on redirects, so a
+        // page reached via an alias/redirect (e.g. "Shakespeare" -> "William_Shakespeare")
+        // must be resolved from the HTML itself, or completion checks against a canonical
+        // goal title would never match.
         let resolvedTitle = currentTitle;
-        if (contentLocation) {
-          const match = contentLocation.match(/\/page\/html\/([^/]+)/);
-          if (match) {
-            resolvedTitle = decodeURIComponent(match[1]);
-          }
+        const versionMatch = rawHtml.match(/<link rel="dc:isVersionOf" href="[^"]*\/wiki\/([^"]+)"/);
+        if (versionMatch) {
+          resolvedTitle = decodeURIComponent(versionMatch[1]);
         }
 
-        const rawHtml = await res.text();
         const cleanHtml = DOMPurify.sanitize(rawHtml, { USE_PROFILES: { html: true } });
 
         if (!cancelled) {
