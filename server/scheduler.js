@@ -56,13 +56,6 @@ cron.schedule("0 0 * * *", () => {
   run();
 });
 
-// TEMPORARY real-time test trigger — remove after verifying the scheduled
-// regeneration works end-to-end on the deployed backend.
-cron.schedule("25 16 23 8 *", () => {
-  console.log("TEST TRIGGER (4:25 PM EDT, 8/23) firing.");
-  run();
-}, { timezone: "America/New_York" });
-
 (async () => {
   if (await hasStoredChallenges()) {
     console.log("Challenges found. Waiting for 12:00 AM.");
