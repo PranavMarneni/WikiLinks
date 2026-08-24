@@ -7,9 +7,15 @@ const SERVICE_ACCOUNT_PATH = path.join(__dirname, "service-account.json");
 const UID_PREFIX = "loadtest-user-";
 
 async function cleanupMongo() {
+  // Use raw collection access on this package's own mongoose connection rather
+  // than importing ../server/models/GameSession — that file's own `require('mongoose')`
+  // resolves to server/node_modules' separate copy, a different module instance
+  // than this one, so it would never see this connection (hangs until buffering
+  // timeout instead of erroring cleanly).
   await mongoose.connect(process.env.MONGODB_URI);
-  const GameSession = require("../server/models/GameSession");
-  const result = await GameSession.deleteMany({ userId: { $regex: `^${UID_PREFIX}` } });
+  const result = await mongoose.connection.db
+    .collection("gamesessions")
+    .deleteMany({ userId: { $regex: `^${UID_PREFIX}` } });
   console.log(`Deleted ${result.deletedCount} GameSession documents.`);
   await mongoose.disconnect();
 }

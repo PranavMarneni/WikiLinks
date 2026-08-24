@@ -2,7 +2,7 @@ config:
   target: "https://wikilinks-k71t.onrender.com"
   phases:
     - name: "Launch-day spike"
-      duration: 15
+      duration: 75
       arrivalCount: 300
   engines:
     socketio-v3: {}
