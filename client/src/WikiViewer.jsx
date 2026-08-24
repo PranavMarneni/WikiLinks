@@ -18,39 +18,56 @@ export default function WikiViewer({
   const onLoadedRef = useRef(onLoaded);
   useEffect(() => { onLoadedRef.current = onLoaded; }, [onLoaded]);
 
-  function isInternalWikiLink(href) {
-    if (!href) return false;
+  // Wikipedia's article HTML writes internal links relative to /wiki/, e.g.
+  // href="./Albert_Einstein#cite_note-1" — must resolve against that base,
+  // not the bare domain, or every real link mis-resolves.
+  function resolveWikiUrl(href) {
+    if (!href) return null;
     try {
-      const url = new URL(href, "https://en.wikipedia.org");
-      return (
-        url.hostname === "en.wikipedia.org" &&
-        !url.pathname.includes(":")
-      );
+      return new URL(href, "https://en.wikipedia.org/wiki/");
     } catch {
-      return false;
+      return null;
     }
   }
 
+  function isInternalWikiLink(href) {
+    const url = resolveWikiUrl(href);
+    if (!url) return false;
+    return (
+      url.hostname === "en.wikipedia.org" &&
+      url.pathname.startsWith("/wiki/") &&
+      !url.pathname.includes(":")
+    );
+  }
+
   function titleFromHref(href) {
-    try {
-      const url = new URL(href, "https://en.wikipedia.org");
-      let path = url.pathname.replace(/^\/+/, "");
-      if (!path.startsWith("wiki/")) path = "wiki/" + path;
-      return decodeURIComponent(path.replace(/^wiki\//, ""));
-    } catch (err) {
-      console.error("[WikiViewer] Failed to parse href:", href, err);
-      return null;
-    }
+    const url = resolveWikiUrl(href);
+    if (!url) return null;
+    const path = url.pathname.replace(/^\/wiki\//, "");
+    return path ? decodeURIComponent(path) : null;
   }
 
   function handleClick(e) {
     const anchor = e.target.closest("a");
     if (!anchor) return;
-    e.preventDefault();
     const href = anchor.getAttribute("href");
     if (!isInternalWikiLink(href)) return;
     const nextTitle = titleFromHref(href);
     if (!nextTitle) return;
+
+    e.preventDefault();
+
+    // Citation/footnote references link back to the current article plus a
+    // fragment (e.g. "./Albert_Einstein#cite_note-1") — titleFromHref drops
+    // the fragment, so without this check they'd reload the whole article
+    // from scratch instead of just scrolling to the reference.
+    const url = resolveWikiUrl(href);
+    if (url.hash && nextTitle.toLowerCase() === currentTitle.toLowerCase()) {
+      const target = document.getElementById(decodeURIComponent(url.hash.slice(1)));
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
     console.log("[WikiViewer] Navigating to:", nextTitle);
     onStep?.({ from: currentTitle, to: nextTitle });
     onNavigate?.(nextTitle);
