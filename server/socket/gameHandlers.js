@@ -124,7 +124,7 @@ async function handleGameStart(io, socket, data, callback, model = GameSession) 
     );
 
     socket.emit("game:started", { startPage: game.startPage, targetPage: game.targetPage });
-    await broadcastScoreboard(io, model);
+    scheduleBroadcast(io, model);
 
     if (typeof callback === "function") {
         callback({ success: true });
@@ -199,7 +199,7 @@ async function handlePlayerFinished(io, socket, data, callback, model = GameSess
         { upsert: true }
     );
 
-    await broadcastScoreboard(io, model);
+    scheduleBroadcast(io, model);
     io.emit("game:player-finished", { userId: socket.userId });
 
     if (typeof callback === "function") {
