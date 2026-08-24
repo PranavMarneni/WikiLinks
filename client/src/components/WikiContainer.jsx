@@ -81,7 +81,7 @@ export default function WikiContainer({
   );
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 min-h-[500px] p-6 flex flex-col">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 min-h-[500px] max-h-[500px] p-6 flex flex-col">
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
@@ -126,8 +126,8 @@ export default function WikiContainer({
       </div>
 
       {/* Game Area */}
-      <div className="flex-1 bg-gray-50 rounded-lg border-2 border-gray-200 p-4 overflow-hidden">
-        <div className="h-full overflow-y-auto">
+      <div className="flex-1 min-h-0 bg-gray-50 rounded-lg border-2 border-gray-200 p-4 overflow-hidden flex flex-col">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           {allChallengesComplete && !gameStarted && !gameComplete ? (
             <div className="flex flex-col items-center justify-center h-full min-h-[300px] gap-4 text-center">
               <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
