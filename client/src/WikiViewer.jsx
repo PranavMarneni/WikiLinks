@@ -24,7 +24,6 @@ export default function WikiViewer({
       const url = new URL(href, "https://en.wikipedia.org");
       return (
         url.hostname === "en.wikipedia.org" &&
-        url.pathname.startsWith("/wiki/") &&
         !url.pathname.includes(":")
       );
     } catch {
@@ -47,11 +46,11 @@ export default function WikiViewer({
   function handleClick(e) {
     const anchor = e.target.closest("a");
     if (!anchor) return;
+    e.preventDefault();
     const href = anchor.getAttribute("href");
     if (!isInternalWikiLink(href)) return;
     const nextTitle = titleFromHref(href);
     if (!nextTitle) return;
-    e.preventDefault();
     console.log("[WikiViewer] Navigating to:", nextTitle);
     onStep?.({ from: currentTitle, to: nextTitle });
     onNavigate?.(nextTitle);
