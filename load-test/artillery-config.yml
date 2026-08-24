@@ -1,0 +1,53 @@
+config:
+  target: "https://wikilinks-k71t.onrender.com"
+  phases:
+    - name: "Launch-day spike"
+      duration: 15
+      arrivalCount: 300
+  engines:
+    socketio-v3: {}
+  payload:
+    path: "./tokens.csv"
+    fields:
+      - "token"
+    order: sequence
+
+scenarios:
+  - name: "Full challenge playthrough"
+    engine: socketio-v3
+    flow:
+      - get:
+          url: "/api/challenges"
+          capture:
+            - json: "$.challenges[0].start"
+              as: "startPage"
+            - json: "$.challenges[0].end"
+              as: "targetPage"
+
+      - connect:
+          auth:
+            token: "{{ token }}"
+
+      - think: 1
+
+      - emit: ["game:start", { startPage: "{{ startPage }}", targetPage: "{{ targetPage }}" }]
+        acknowledge: true
+
+      - think: 2
+
+      - emit: ["game:click", { newPage: "Intermediate_Page_A" }]
+
+      - think: 3
+
+      - emit: ["game:click", { newPage: "Intermediate_Page_B" }]
+
+      - think: 2
+
+      - emit: ["game:click", { newPage: "{{ targetPage }}" }]
+
+      - think: 1
+
+      - emit: ["game:player-finished", { elapsedSeconds: 45 }]
+        acknowledge: true
+
+      - think: 2

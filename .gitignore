@@ -3,3 +3,5 @@
 .env
 .idea/
 *.md
+load-test/service-account.json
+load-test/tokens.csv

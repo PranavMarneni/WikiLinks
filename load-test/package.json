@@ -1,0 +1,19 @@
+{
+  "name": "wikilinks-load-test",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Simulated-concurrency load test for WikiLinks, separate from the deployed client/server",
+  "scripts": {
+    "generate-tokens": "node generate-tokens.js",
+    "test": "artillery run artillery-config.yml",
+    "cleanup": "node cleanup.js"
+  },
+  "dependencies": {
+    "artillery": "^2.0.34",
+    "artillery-engine-socketio-v3": "^1.2.0",
+    "dotenv": "^17.4.1",
+    "firebase-admin": "^13.8.0",
+    "mongoose": "^8.18.0",
+    "node-fetch": "^2.6.7"
+  }
+}
