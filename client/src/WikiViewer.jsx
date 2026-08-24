@@ -101,7 +101,13 @@ export default function WikiViewer({
           resolvedTitle = decodeURIComponent(versionMatch[1]);
         }
 
-        const cleanHtml = DOMPurify.sanitize(rawHtml, { USE_PROFILES: { html: true } });
+        // data-mw carries Parsoid's editing/template metadata as inline JSON —
+        // never used for display, but makes up ~23% of a typical article's
+        // payload, which matters a lot for mobile parse/sanitize time.
+        const cleanHtml = DOMPurify.sanitize(rawHtml, {
+          USE_PROFILES: { html: true },
+          FORBID_ATTR: ["data-mw"],
+        });
 
         if (!cancelled) {
           setHtml(cleanHtml);
