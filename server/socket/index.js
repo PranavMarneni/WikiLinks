@@ -2,6 +2,8 @@ const { Server } = require('socket.io');
 const admin = require('../config/firebase');
 const registerGameHandlers = require('./gameHandlers');
 const { getTodaysProgress, getLeaderboard } = registerGameHandlers;
+const registerProfileHandlers = require('./profileHandlers');
+const { hasBeenAsked } = registerProfileHandlers;
 const GameSession = require('../models/GameSession');
 
 function createSocketAuthMiddleware(adminInstance = admin) {
@@ -71,6 +73,13 @@ function initSocket(httpServer) {
             console.error('Failed to load leaderboard:', err.message);
         }
 
+        try {
+            const asked = await hasBeenAsked(socket.userId);
+            socket.emit('profile:status', { asked });
+        } catch (err) {
+            console.error('Failed to load profile status:', err.message);
+        }
+
         socket.on('disconnect', async () => {
             console.log(`Client disconnected: ${socket.id} (user: ${socket.userId})`);
             await markDisconnectedSessionQuit(socket);
@@ -81,6 +90,7 @@ function initSocket(httpServer) {
         });
 
         registerGameHandlers(io, socket);
+        registerProfileHandlers(io, socket);
     });
 
     return io;

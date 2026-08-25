@@ -3,6 +3,7 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import { ChevronUp } from "lucide-react";
 import Header from "./components/Header";
 import Instructions from "./components/Instructions";
+import PhoneNumberModal from "./components/PhoneNumberModal";
 import GameLayout from "./components/GameLayout";
 import ChallengeControls from "./components/ChallengeControls";
 import { auth } from "./js/firebase";
@@ -32,6 +33,7 @@ export default function App() {
   const [challengeStats, setChallengeStats] = useState([]);
   const [todaysProgress, setTodaysProgress] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
+  const [needsPhonePrompt, setNeedsPhonePrompt] = useState(false);
   const [socket, setSocket] = useState(null);
   const [socketConnected, setSocketConnected] = useState(false);
   const [user, authLoading] = useAuthState(auth);
@@ -103,6 +105,9 @@ export default function App() {
     const handleProgress = (sessions) => {
       setTodaysProgress(Array.isArray(sessions) ? sessions : []);
     };
+    const handleProfileStatus = ({ asked }) => {
+      setNeedsPhonePrompt(!asked);
+    };
     const handleChallengesUpdated = (data) => {
       // fires when the daily challenges regenerate (midnight) — start the new
       // day fresh for anyone already connected, rather than leaving them on
@@ -131,6 +136,7 @@ export default function App() {
         activeSocket.on("leaderboard:update", handleLeaderboardUpdate);
         activeSocket.on("game:progress", handleProgress);
         activeSocket.on("challenges:updated", handleChallengesUpdated);
+        activeSocket.on("profile:status", handleProfileStatus);
 
         setLeaderboard([]);
         setSocket(activeSocket);
@@ -154,6 +160,7 @@ export default function App() {
         activeSocket.off("leaderboard:update", handleLeaderboardUpdate);
         activeSocket.off("game:progress", handleProgress);
         activeSocket.off("challenges:updated", handleChallengesUpdated);
+        activeSocket.off("profile:status", handleProfileStatus);
       }
 
       disconnectSocket();
@@ -204,6 +211,26 @@ export default function App() {
     setGameKey((k) => k + 1);
   }
 
+  function submitPhoneNumber(phoneNumber) {
+    if (socket?.connected) {
+      socket.emit("profile:submit-phone", { phoneNumber }, () => {
+        setNeedsPhonePrompt(false);
+      });
+    } else {
+      setNeedsPhonePrompt(false);
+    }
+  }
+
+  function skipPhoneNumber() {
+    if (socket?.connected) {
+      socket.emit("profile:submit-phone", { phoneNumber: null }, () => {
+        setNeedsPhonePrompt(false);
+      });
+    } else {
+      setNeedsPhonePrompt(false);
+    }
+  }
+
   // loading state
   if (challenges.length === 0) {
     return <div className="p-10 text-center">Loading challenges...</div>;
@@ -247,6 +274,10 @@ export default function App() {
 
       {showInstructions && (
         <Instructions onClose={() => setShowInstructions(false)} />
+      )}
+
+      {!showInstructions && needsPhonePrompt && (
+        <PhoneNumberModal onSubmit={submitPhoneNumber} onSkip={skipPhoneNumber} />
       )}
 
       {showScrollTop && (
