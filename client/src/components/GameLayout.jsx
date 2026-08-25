@@ -35,13 +35,15 @@ export default function GameLayout({
 
       {/* Right: standings */}
       <div className="lg:col-span-1">
-        <StandingsPanel
-          challengeStats={challengeStats}
-          leaderboard={leaderboard}
-          user={user}
-          authLoading={authLoading}
-          socketConnected={socketConnected}
-        />
+        <div className="lg:sticky lg:top-6">
+          <StandingsPanel
+            challengeStats={challengeStats}
+            leaderboard={leaderboard}
+            user={user}
+            authLoading={authLoading}
+            socketConnected={socketConnected}
+          />
+        </div>
       </div>
     </section>
   );
