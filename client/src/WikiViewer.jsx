@@ -104,9 +104,16 @@ export default function WikiViewer({
         // data-mw carries Parsoid's editing/template metadata as inline JSON —
         // never used for display, but makes up ~23% of a typical article's
         // payload, which matters a lot for mobile parse/sanitize time.
+        //
+        // video/audio are dropped entirely: Wikipedia's thumbnail URLs for
+        // embedded media (e.g. "250px--Foul_plus_basket.ogg.jpg") are
+        // sometimes malformed at the source and 400 repeatedly, which is
+        // enough to visibly disrupt scroll/layout in some browsers. Not
+        // needed for reading an article and clicking links anyway.
         const cleanHtml = DOMPurify.sanitize(rawHtml, {
           USE_PROFILES: { html: true },
           FORBID_ATTR: ["data-mw"],
+          FORBID_TAGS: ["video", "audio"],
         });
 
         if (!cancelled) {
